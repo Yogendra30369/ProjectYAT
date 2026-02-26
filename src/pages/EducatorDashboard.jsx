@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCourses } from '../context/CourseContext';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -8,6 +8,37 @@ import styles from './Dashboard.module.css';
 
 export const EducatorDashboard = () => {
     const { courses } = useCourses();
+
+    const getTotalStudents = () => {
+        const storedStudents = localStorage.getItem('registeredStudents');
+
+        if (!storedStudents) {
+            return 1;
+        }
+
+        try {
+            const parsedStudents = JSON.parse(storedStudents);
+            return 1 + parsedStudents.length;
+        } catch {
+            return 1;
+        }
+    };
+
+    const [totalStudents, setTotalStudents] = useState(getTotalStudents());
+
+    useEffect(() => {
+        const refreshStudentCount = () => setTotalStudents(getTotalStudents());
+
+        window.addEventListener('studentsUpdated', refreshStudentCount);
+        window.addEventListener('storage', refreshStudentCount);
+        window.addEventListener('focus', refreshStudentCount);
+
+        return () => {
+            window.removeEventListener('studentsUpdated', refreshStudentCount);
+            window.removeEventListener('storage', refreshStudentCount);
+            window.removeEventListener('focus', refreshStudentCount);
+        };
+    }, []);
 
     return (
         <div className="container" style={{ marginTop: '2rem' }}>
@@ -38,7 +69,7 @@ export const EducatorDashboard = () => {
                     </div>
                     <div>
                         <p className={styles.statLabel}>Total Students</p>
-                        <p className={styles.statValue}>128</p>
+                        <p className={styles.statValue}>{totalStudents}</p>
                     </div>
                 </Card>
             </div>

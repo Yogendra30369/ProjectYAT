@@ -60,6 +60,7 @@ export const AuthProvider = ({ children }) => {
         if (!existingStudent) {
             const updatedStudents = [...registeredStudents, userData];
             localStorage.setItem('registeredStudents', JSON.stringify(updatedStudents));
+            window.dispatchEvent(new Event('studentsUpdated'));
         }
 
         setUser(userData);
