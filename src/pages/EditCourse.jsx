@@ -35,6 +35,10 @@ const toEditableCourse = (course) => {
                 uploadedVideoName: module.uploadedVideoName || ''
             }))
             : [createEmptyModule()]
+        ,
+        assignmentFileName: course.assignmentFileName || '',
+        assignmentFileType: course.assignmentFileType || '',
+        assignmentFileDataUrl: course.assignmentFileDataUrl || ''
     };
 };
 
@@ -89,6 +93,32 @@ export const EditCourse = () => {
         navigate('/educator');
     };
 
+    const handleAssignmentUpload = (file) => {
+        if (!file) return;
+
+        const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+        if (!allowed.includes(file.type)) {
+            alert('Please upload a PDF or Word document for assignment questions.');
+            return;
+        }
+
+        if (file.size > 6 * 1024 * 1024) {
+            alert('Please upload a file smaller than 6MB for this demo.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setFormData({
+                ...formData,
+                assignmentFileName: file.name,
+                assignmentFileType: file.type,
+                assignmentFileDataUrl: reader.result
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleVideoUpload = (moduleId, file) => {
         if (!file) return;
 
@@ -131,6 +161,14 @@ export const EditCourse = () => {
                         onChange={handleChange}
                         placeholder="Short summary of the course..."
                     />
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--gray-700)' }}>Assignment Questions (optional)</label>
+                        <Input type="file" accept=".pdf,.doc,.docx,.txt" onChange={(e) => handleAssignmentUpload(e.target.files?.[0])} />
+                        {formData.assignmentFileName && (
+                            <div style={{ marginTop: '0.4rem', fontSize: '0.85rem', color: 'var(--gray-600)' }}>Selected: {formData.assignmentFileName}</div>
+                        )}
+                    </div>
 
                     <div>
                         <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
