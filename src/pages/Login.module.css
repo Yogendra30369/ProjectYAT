@@ -4,16 +4,23 @@
     align-items: center;
     justify-content: center;
     background-color: var(--gray-50);
+    background-image: url('/welcome.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
     padding: var(--space-4);
 }
 
 .loginCard {
     width: 100%;
-    max-width: 480px;
-    padding: var(--space-8);
+    max-width: 420px;
+    padding: 1.75rem 1.4rem;
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: 1.1rem;
+    background-color: var(--primary-50);
+    border: 1px solid var(--primary-200);
+    box-shadow: var(--shadow-md);
 }
 
 .header {
@@ -21,43 +28,176 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-4);
+    gap: 0.55rem;
 }
 
 .logoIcon {
-    background: linear-gradient(135deg, var(--primary-600), var(--primary-400));
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-lg);
+    background: var(--primary-600);
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: var(--space-2);
+    margin-bottom: 0.35rem;
 }
 
 .title {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: 600;
     color: var(--gray-900);
 }
 
 .subtitle {
-    color: var(--gray-500);
+    color: var(--gray-600);
+    font-size: 0.88rem;
 }
 
 .options {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: 0.85rem;
+}
+
+.portalHeader {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.15rem;
+}
+
+.portalTitle {
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: 0;
+}
+
+.portalSubtitle {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+}
+
+.registerForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.fullWidthButton {
+    width: 100%;
+    margin-top: 0.1rem;
+    min-height: 36px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.credentialsBox {
+    border: 1px solid var(--primary-200);
+    border-radius: var(--radius-md);
+    background-color: rgba(255, 255, 255, 0.45);
+    padding: 0.7rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+}
+
+.credentialsTitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.credentialsText {
+    font-size: 0.74rem;
+    color: var(--gray-700);
+}
+
+.switchText {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    margin-top: 0.15rem;
+}
+
+.textLink {
+    background: none;
+    border: none;
+    color: var(--gray-700);
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-decoration: none;
+}
+
+.textLink:hover {
+    color: var(--gray-900);
+}
+
+.backButton {
+    margin-top: 0.1rem;
+    border: none;
+    background: none;
+    color: var(--gray-600);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    font: inherit;
+    font-size: 0.8rem;
+    width: 100%;
+}
+
+.backButton:hover {
+    color: var(--gray-800);
+}
+
+.fieldGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.fieldLabel {
+    font-size: 0.84rem;
+    color: var(--gray-800);
+    font-weight: 600;
+}
+
+.fieldInput {
+    width: 100%;
+    height: 32px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    background-color: rgba(255, 255, 255, 0.95);
+    color: var(--gray-800);
+    padding: 0 0.65rem;
+    font-size: 0.84rem;
+    font-family: inherit;
+}
+
+.fieldInput:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+.errorText {
+    color: var(--danger);
+    font-size: 0.72rem;
 }
 
 .roleBtn {
     display: flex;
     align-items: center;
     gap: var(--space-4);
-    padding: var(--space-4);
-    background: white;
-    border: 2px solid var(--gray-200);
+    padding: 0.8rem 0.85rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--primary-200);
     border-radius: var(--radius-lg);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -66,8 +206,7 @@
 
 .roleBtn:hover {
     border-color: var(--primary-500);
-    background-color: var(--primary-50);
-    transform: translateY(-2px);
+    background-color: white;
 }
 
 .icon {
@@ -82,11 +221,11 @@
 
 .roleTitle {
     font-weight: 600;
-    font-size: 1.125rem;
+    font-size: 1rem;
     color: var(--gray-900);
 }
 
 .roleDesc {
-    color: var(--gray-500);
-    font-size: 0.875rem;
+    color: var(--gray-600);
+    font-size: 0.8rem;
 }
