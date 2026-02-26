@@ -1,0 +1,101 @@
+.navbar {
+    background-color: var(--primary-900);
+    border-bottom: 1px solid var(--primary-800);
+    padding: var(--space-4) 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+}
+
+.inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: white;
+}
+
+.logoIcon {
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-400));
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+}
+
+.link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--primary-100);
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.link:hover {
+    color: white;
+}
+
+.userSection {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.profileIconBtn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--primary-700);
+    color: var(--primary-100);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.profileIconBtn:hover {
+    color: white;
+    border-color: var(--primary-400);
+    background-color: var(--primary-800);
+}
+
+.userName {
+    font-weight: 500;
+    color: white;
+}
+
+.roleBadge {
+    background-color: var(--primary-800);
+    color: var(--primary-100);
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    text-transform: capitalize;
+    font-weight: 600;
+}
+
+.logoutBtn {
+    color: var(--primary-100) !important;
+}
+
+.logoutBtn:hover {
+    background-color: var(--primary-800) !important;
+    color: white !important;
+}

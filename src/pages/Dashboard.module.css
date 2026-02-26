@@ -1,0 +1,237 @@
+.dashboardPage {
+    min-height: calc(100vh - 72px);
+    background-image: linear-gradient(rgba(249, 250, 251, 0.88), rgba(249, 250, 251, 0.88)), url('/dashboard-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-8);
+}
+
+.subtitle {
+    color: var(--gray-500);
+    margin-top: var(--space-1);
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+}
+
+.statCard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-6);
+}
+
+.clickableCard {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.clickableCard:hover,
+.clickableCard:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-200);
+    outline: none;
+}
+
+.statIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.statLabel {
+    color: var(--gray-500);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.statValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1.2;
+}
+
+.courseGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-6);
+}
+
+.studentLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: var(--space-6);
+    align-items: start;
+}
+
+.sectionTitle {
+    margin-bottom: var(--space-4);
+}
+
+.sideColumn {
+    position: static;
+}
+
+.upcomingSection {
+    padding: var(--space-5);
+}
+
+.upcomingHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+}
+
+.upcomingHeader h2 {
+    margin: 0;
+    font-size: 1.125rem;
+    color: var(--gray-900);
+}
+
+.taskList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-3);
+}
+
+.taskItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: 0.875rem 0.875rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: white;
+}
+
+.taskTitle {
+    color: var(--gray-800);
+    font-weight: 500;
+}
+
+.taskDue {
+    color: var(--gray-600);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    min-width: 88px;
+    text-align: right;
+}
+
+.emptyTaskText {
+    color: var(--gray-500);
+    font-size: 0.95rem;
+}
+
+.courseCard {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between;
+}
+
+.courseBody {
+    margin-top: auto;
+    padding-top: 1rem;
+}
+
+.progressHeader {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    color: var(--gray-600);
+}
+
+.progressTrack {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: var(--primary-600);
+}
+
+.actionsRow {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.continueLink {
+    flex: 1;
+    display: block;
+}
+
+.courseHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-2);
+}
+
+.courseDesc {
+    color: var(--gray-600);
+    margin-bottom: var(--space-4);
+    flex-grow: 1;
+}
+
+.courseFooter {
+    display: flex;
+    gap: var(--space-2);
+    border-top: 1px solid var(--gray-100);
+    padding-top: var(--space-4);
+}
+
+.badge {
+    background-color: var(--gray-100);
+    color: var(--gray-700);
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+}
+
+@media (max-width: 980px) {
+    .studentLayout {
+        grid-template-columns: 1fr;
+    }
+
+    .sideColumn {
+        position: static;
+    }
+}
+
+@media (max-width: 640px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-3);
+    }
+
+    .actionsRow {
+        flex-direction: column;
+    }
+}
