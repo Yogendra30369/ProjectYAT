@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navbar } from './Navbar';
+import { Footer } from './Footer';
 
 export const Layout = ({ children }) => {
     return (
@@ -8,6 +9,7 @@ export const Layout = ({ children }) => {
             <main style={{ flex: 1, paddingBottom: '4rem' }}>
                 {children}
             </main>
+            <Footer />
         </div>
     );
 };

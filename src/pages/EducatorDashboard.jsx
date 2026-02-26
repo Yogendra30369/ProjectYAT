@@ -1,46 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useCourses } from '../context/CourseContext';
+import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { PlusCircle, Users, BookOpen } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { PlusCircle, Users, BookOpen, Trash2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 export const EducatorDashboard = () => {
-    const { courses } = useCourses();
+    const { courses, deleteCourse } = useCourses();
+    const { getStudentCount } = useAuth();
+    const navigate = useNavigate();
 
-    const getTotalStudents = () => {
-        const storedStudents = localStorage.getItem('registeredStudents');
-
-        if (!storedStudents) {
-            return 1;
-        }
-
-        try {
-            const parsedStudents = JSON.parse(storedStudents);
-            return 1 + parsedStudents.length;
-        } catch {
-            return 1;
+    const handleDelete = (courseId) => {
+        if (window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) {
+            deleteCourse(courseId);
         }
     };
 
-    const [totalStudents, setTotalStudents] = useState(getTotalStudents());
-
-    useEffect(() => {
-        const refreshStudentCount = () => setTotalStudents(getTotalStudents());
-
-        window.addEventListener('studentsUpdated', refreshStudentCount);
-        window.addEventListener('storage', refreshStudentCount);
-        window.addEventListener('focus', refreshStudentCount);
-
-        return () => {
-            window.removeEventListener('studentsUpdated', refreshStudentCount);
-            window.removeEventListener('storage', refreshStudentCount);
-            window.removeEventListener('focus', refreshStudentCount);
-        };
-    }, []);
-
     return (
+        <div className={styles.dashboardPage}>
         <div className="container" style={{ marginTop: '2rem' }}>
 
             <div className={styles.header}>
@@ -63,13 +42,18 @@ export const EducatorDashboard = () => {
                         <p className={styles.statValue}>{courses.length}</p>
                     </div>
                 </Card>
-                <Card className={styles.statCard}>
+                <Card className={`${styles.statCard} ${styles.clickableCard}`} onClick={() => navigate('/students')} role="button" tabIndex={0} onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate('/students');
+                    }
+                }}>
                     <div className={styles.statIcon} style={{ background: 'var(--success)', color: 'white', opacity: 0.8 }}>
                         <Users size={24} />
                     </div>
                     <div>
                         <p className={styles.statLabel}>Total Students</p>
-                        <p className={styles.statValue}>{totalStudents}</p>
+                        <p className={styles.statValue}>{getStudentCount()}</p>
                     </div>
                 </Card>
             </div>
@@ -84,12 +68,18 @@ export const EducatorDashboard = () => {
                         </div>
                         <p className={styles.courseDesc}>{course.description}</p>
                         <div className={styles.courseFooter}>
-                            <Button variant="outline" size="sm">Edit Content</Button>
-                            <Button variant="ghost" size="sm">View Students</Button>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <Button variant="outline" size="sm" onClick={() => navigate(`/edit-course/${course.id}`)}>Edit</Button>
+                                <Button variant="ghost" size="sm" onClick={() => navigate(`/course-students/${course.id}`)}>Students</Button>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(course.id)} style={{ color: 'var(--danger)', padding: '0.5rem' }}>
+                                <Trash2 size={16} />
+                            </Button>
                         </div>
                     </Card>
                 ))}
             </div>
+        </div>
         </div>
     );
 };

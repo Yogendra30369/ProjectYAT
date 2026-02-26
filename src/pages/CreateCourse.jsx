@@ -5,15 +5,27 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useNavigate } from 'react-router-dom';
 import { Trash, Plus } from 'lucide-react';
+import { toEmbeddableYouTubeUrl } from '../utils/videoUrl';
+
+const createModuleId = () => crypto.randomUUID();
+
+const createEmptyModule = () => ({
+    id: createModuleId(),
+    title: '',
+    content: '',
+    videoSource: 'youtube',
+    videoUrl: '',
+    uploadedVideoName: ''
+});
 
 export const CreateCourse = () => {
     const { addCourse } = useCourses();
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(() => ({
         title: '',
         description: '',
-        modules: [{ id: Date.now(), title: '', content: '' }]
-    });
+        modules: [createEmptyModule()]
+    }));
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -29,7 +41,7 @@ export const CreateCourse = () => {
     const addModule = () => {
         setFormData({
             ...formData,
-            modules: [...formData.modules, { id: Date.now(), title: '', content: '' }]
+            modules: [...formData.modules, createEmptyModule()]
         });
     };
 
@@ -43,8 +55,40 @@ export const CreateCourse = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!formData.title || !formData.description) return; // Simple validation
-        addCourse(formData);
+
+        const normalizedCourse = {
+            ...formData,
+            modules: formData.modules.map((module) => ({
+                ...module,
+                videoUrl: (module.videoSource || 'youtube') === 'youtube'
+                    ? toEmbeddableYouTubeUrl(module.videoUrl)
+                    : module.videoUrl
+            }))
+        };
+
+        addCourse(normalizedCourse);
         navigate('/educator');
+    };
+
+    const handleVideoUpload = (moduleId, file) => {
+        if (!file) return;
+
+        if (!file.type.startsWith('video/')) {
+            alert('Please upload a valid video file.');
+            return;
+        }
+
+        if (file.size > 4 * 1024 * 1024) {
+            alert('Please upload a video smaller than 4MB for this demo.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            handleModuleChange(moduleId, 'videoUrl', reader.result);
+            handleModuleChange(moduleId, 'uploadedVideoName', file.name);
+        };
+        reader.readAsDataURL(file);
     };
 
     return (
@@ -100,10 +144,48 @@ export const CreateCourse = () => {
                                             onChange={(e) => handleModuleChange(module.id, 'title', e.target.value)}
                                         />
                                         <Input
-                                            placeholder="Content (Video URL / Text)"
+                                            placeholder="Module description"
                                             value={module.content}
                                             onChange={(e) => handleModuleChange(module.id, 'content', e.target.value)}
                                         />
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <label style={{ fontSize: '0.875rem', color: 'var(--gray-700)', fontWeight: 500 }}>Video source</label>
+                                            <select
+                                                value={module.videoSource || 'youtube'}
+                                                onChange={(e) => handleModuleChange(module.id, 'videoSource', e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    border: '1px solid var(--gray-200)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    padding: '0.75rem 1rem',
+                                                    fontSize: '0.9rem',
+                                                    background: 'white'
+                                                }}
+                                            >
+                                                <option value="youtube">YouTube URL</option>
+                                                <option value="upload">Upload video file</option>
+                                            </select>
+                                        </div>
+
+                                        {module.videoSource === 'upload' ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                <Input
+                                                    type="file"
+                                                    accept="video/*"
+                                                    onChange={(e) => handleVideoUpload(module.id, e.target.files?.[0])}
+                                                />
+                                                {module.uploadedVideoName && (
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>Selected: {module.uploadedVideoName}</span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <Input
+                                                placeholder="YouTube URL (watch/share/embed all supported)"
+                                                value={module.videoUrl || ''}
+                                                onChange={(e) => handleModuleChange(module.id, 'videoUrl', e.target.value)}
+                                            />
+                                        )}
                                     </div>
 
                                     {formData.modules.length > 1 && (
