@@ -18,6 +18,19 @@ export const CourseDetails = () => {
     const [assignmentFile, setAssignmentFile] = useState(null);
     const [submitted, setSubmitted] = useState(false);
 
+    const assignmentQuestionFileName =
+        course?.assignmentFileName
+        || course?.assignmentQuestionFileName
+        || course?.assignmentFile?.name
+        || '';
+    const assignmentQuestionFileDataUrl =
+        course?.assignmentFileDataUrl
+        || course?.assignmentQuestionFileDataUrl
+        || course?.assignmentDataUrl
+        || course?.assignmentFile?.dataUrl
+        || course?.assignmentFile?.url
+        || '';
+
     const modules = course?.modules || [];
     const currentModule = modules[activeModule];
     const currentModuleVideoSource = currentModule?.videoSource || 'youtube';
@@ -190,6 +203,14 @@ export const CourseDetails = () => {
                         <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <FileText size={20} /> Assignment Submission
                         </h3>
+                        {assignmentQuestionFileDataUrl && assignmentQuestionFileName && (
+                            <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <a href={assignmentQuestionFileDataUrl} download={assignmentQuestionFileName} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--primary-800)', fontWeight: 600 }}>
+                                    <FileText size={16} /> Download Assignment Questions
+                                </a>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>{assignmentQuestionFileName}</span>
+                            </div>
+                        )}
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
                             <div style={{ flex: 1 }}>
                                 <Input type="file" onChange={handleFileChange} />

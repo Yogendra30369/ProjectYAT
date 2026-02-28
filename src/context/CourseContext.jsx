@@ -17,6 +17,61 @@ const parseJsonOrFallback = (value, fallback) => {
     }
 };
 
+const normalizeAssignmentFields = (course = {}) => {
+    const legacyAssignment = course.assignmentFile || course.assignment || course.assignmentQuestionFile || null;
+
+    const assignmentFileName =
+        course.assignmentFileName
+        || course.assignmentQuestionFileName
+        || legacyAssignment?.name
+        || '';
+
+    const assignmentFileType =
+        course.assignmentFileType
+        || course.assignmentQuestionFileType
+        || legacyAssignment?.type
+        || '';
+
+    const assignmentFileDataUrl =
+        course.assignmentFileDataUrl
+        || course.assignmentQuestionFileDataUrl
+        || course.assignmentDataUrl
+        || legacyAssignment?.dataUrl
+        || legacyAssignment?.url
+        || '';
+
+    return {
+        assignmentFileName,
+        assignmentFileType,
+        assignmentFileDataUrl
+    };
+};
+
+const normalizeCourse = (course = {}) => {
+    const normalizedModules = Array.isArray(course.modules)
+        ? course.modules.map(module => ({
+            ...module,
+            videoSource: module.videoSource || (module.videoUrl && module.videoUrl.startsWith('data:video') ? 'upload' : 'youtube'),
+            videoUrl: module.videoUrl || '',
+            uploadedVideoName: module.uploadedVideoName || ''
+        }))
+        : [];
+
+    return {
+        ...course,
+        modules: normalizedModules,
+        ...normalizeAssignmentFields(course)
+    };
+};
+
+const normalizeCourses = (courseList) => {
+    if (!Array.isArray(courseList)) {
+        return [];
+    }
+
+    return courseList.map(normalizeCourse);
+};
+
 const getDefaultRegistrationDate = (offsetDays = 0) => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -45,12 +100,16 @@ export const CourseProvider = ({ children }) => {
         const storedCourseSeedVersion = localStorage.getItem('coursesSeedVersion');
 
         if (storedCourses && storedCourseSeedVersion === COURSE_SEED_VERSION) {
-            return parseJsonOrFallback(storedCourses, MOCK_COURSES);
+            const parsedCourses = parseJsonOrFallback(storedCourses, MOCK_COURSES);
+            const normalizedStoredCourses = normalizeCourses(parsedCourses);
+            localStorage.setItem('courses', JSON.stringify(normalizedStoredCourses));
+            return normalizedStoredCourses;
         }
 
-        localStorage.setItem('courses', JSON.stringify(MOCK_COURSES));
+        const normalizedMockCourses = normalizeCourses(MOCK_COURSES);
+        localStorage.setItem('courses', JSON.stringify(normalizedMockCourses));
         localStorage.setItem('coursesSeedVersion', COURSE_SEED_VERSION);
-        return MOCK_COURSES;
+        return normalizedMockCourses;
     });
 
     const [enrolledMap, setEnrolledMap] = useState(() => {
@@ -127,13 +186,15 @@ export const CourseProvider = ({ children }) => {
     };
 
     const addCourse = (newCourse) => {
-        const updatedCourses = [...courses, { ...newCourse, id: Date.now().toString() }];
+        const normalizedNewCourse = normalizeCourse({ ...newCourse, id: Date.now().toString() });
+        const updatedCourses = [...courses, normalizedNewCourse];
         setCourses(updatedCourses);
         localStorage.setItem('courses', JSON.stringify(updatedCourses));
     };
 
     const updateCourse = (updatedCourse) => {
-        const updatedCourses = courses.map(c => c.id === updatedCourse.id ? updatedCourse : c);
+        const normalizedUpdatedCourse = normalizeCourse(updatedCourse);
+        const updatedCourses = courses.map(c => c.id === normalizedUpdatedCourse.id ? normalizedUpdatedCourse : c);
         setCourses(updatedCourses);
         localStorage.setItem('courses', JSON.stringify(updatedCourses));
     };
