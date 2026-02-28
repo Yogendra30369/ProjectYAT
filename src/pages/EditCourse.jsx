@@ -109,12 +109,12 @@ export const EditCourse = () => {
 
         const reader = new FileReader();
         reader.onload = () => {
-            setFormData(prev => ({
-                ...prev,
+            setFormData({
+                ...formData,
                 assignmentFileName: file.name,
                 assignmentFileType: file.type,
                 assignmentFileDataUrl: reader.result
-            }));
+            });
         };
         reader.readAsDataURL(file);
     };

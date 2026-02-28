@@ -203,12 +203,12 @@ export const CourseDetails = () => {
                         <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <FileText size={20} /> Assignment Submission
                         </h3>
-                        {assignmentQuestionFileDataUrl && assignmentQuestionFileName && (
+                        {course.assignmentFileDataUrl && course.assignmentFileName && (
                             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                <a href={assignmentQuestionFileDataUrl} download={assignmentQuestionFileName} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--primary-800)', fontWeight: 600 }}>
+                                <a href={course.assignmentFileDataUrl} download={course.assignmentFileName} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--primary-800)', fontWeight: 600 }}>
                                     <FileText size={16} /> Download Assignment Questions
                                 </a>
-                                <span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>{assignmentQuestionFileName}</span>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>{course.assignmentFileName}</span>
                             </div>
                         )}
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
