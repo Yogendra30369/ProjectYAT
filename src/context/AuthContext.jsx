@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { MOCK_USERS, MOCK_USERS_DB } from '../data/mockData';
+import { fetchApi } from '../utils/api';
 
 const AuthContext = createContext();
 const USERS_DB_STORAGE_KEY = 'usersDb';
@@ -41,46 +42,111 @@ export const AuthProvider = ({ children }) => {
     });
 
     // Login with email and password
-    const loginWithCredentials = (email, password) => {
-        const foundUser = usersDb.find(
-            u => u.email === email && u.password === password
-        );
-        
-        if (foundUser) {
-            const userWithoutPassword = { ...foundUser };
-            delete userWithoutPassword.password;
-            setUser(userWithoutPassword);
-            localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-            return { success: true, user: userWithoutPassword };
+    const loginWithCredentials = async (email, password) => {
+        try {
+            const data = await fetchApi('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password })
+            });
+
+            if (data.includes('successful')) {
+                // Fallback to determine role and local mock db
+                const isEducator = email.includes('admin') || email.includes('educator');
+                const role = isEducator ? 'educator' : 'student';
+                
+                let foundUser = usersDb.find(u => u.email === email);
+                if (!foundUser) {
+                    foundUser = {
+                        id: `u${Date.now()}`,
+                        name: email.split('@')[0],
+                        email,
+                        role: role,
+                        enrolledCourses: []
+                    };
+                }
+                
+                const userWithoutPassword = { ...foundUser };
+                delete userWithoutPassword.password;
+                setUser(userWithoutPassword);
+                localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+                return { success: true, user: userWithoutPassword };
+            } else {
+                return { success: false, error: data };
+            }
+        } catch (error) {
+            console.error("Login API Error:", error);
+            // Local fallback logic
+            const foundUser = usersDb.find(
+                u => u.email === email && u.password === password
+            );
+            
+            if (foundUser) {
+                const userWithoutPassword = { ...foundUser };
+                delete userWithoutPassword.password;
+                setUser(userWithoutPassword);
+                localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+                return { success: true, user: userWithoutPassword };
+            }
+            
+            return { success: false, error: 'Invalid email or password' };
         }
-        
-        return { success: false, error: 'Invalid email or password' };
     };
 
     // Sign up new student
-    const signup = (name, email, password) => {
-        // Check if email already exists
-        const existingUser = usersDb.find(u => u.email === email);
-        if (existingUser) {
-            return { success: false, error: 'Email already exists' };
+    const signup = async (name, email, password) => {
+        try {
+            const data = await fetchApi('/auth/register', {
+                method: 'POST',
+                body: JSON.stringify({ name, email, password })
+            });
+
+            if (data.includes('OTP sent')) {
+                return { success: true, message: data };
+            } else {
+                return { success: false, error: data };
+            }
+        } catch (error) {
+            console.error("Signup API Error:", error);
+            // Local fallback
+            const existingUser = usersDb.find(u => u.email === email);
+            if (existingUser) {
+                return { success: false, error: 'Email already exists' };
+            }
+
+            const newUser = {
+                id: `u${Date.now()}`,
+                name,
+                email,
+                role: 'student',
+                enrolledCourses: []
+            };
+
+            const updatedUsersDb = [...usersDb, { ...newUser, password }];
+            setUsersDb(updatedUsersDb);
+            localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
+            
+            setUser(newUser);
+            localStorage.setItem('user', JSON.stringify(newUser));
+            return { success: true, user: newUser };
         }
+    };
 
-        // Create new user
-        const newUser = {
-            id: `u${Date.now()}`,
-            name,
-            email,
-            role: 'student',
-            enrolledCourses: []
-        };
+    const verifyOTP = async (email, otp) => {
+        try {
+            const data = await fetchApi('/auth/verify', {
+                method: 'POST',
+                body: JSON.stringify({ email, otp })
+            });
 
-        const updatedUsersDb = [...usersDb, { ...newUser, password }];
-        setUsersDb(updatedUsersDb);
-        localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
-        
-        setUser(newUser);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        return { success: true, user: newUser };
+            if (data.includes('Verified successfully')) {
+                return { success: true, message: data };
+            } else {
+                return { success: false, error: data };
+            }
+        } catch (error) {
+            console.error("Verify OTP API Error:", error);
+            return { success: false, error: 'Failed to verify OTP' };
+        }
     };
 
     const getStudentCount = () => usersDb.filter(u => u.role === 'student').length;
@@ -109,6 +175,7 @@ export const AuthProvider = ({ children }) => {
             login, 
             loginWithCredentials,
             signup,
+            verifyOTP,
             getStudentCount,
             logout, 
             isAuthenticated: !!user 

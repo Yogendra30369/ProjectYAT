@@ -20,7 +20,7 @@ export const EducatorLogin = () => {
         setError('');
         setLoading(true);
 
-        const result = loginWithCredentials(email, password);
+        const result = await loginWithCredentials(email, password);
         
         if (result.success && result.user.role === 'educator') {
             navigate('/educator');
