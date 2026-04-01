@@ -1,0 +1,14 @@
+.card {
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-100);
+    padding: var(--space-6);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.hoverable:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    border-color: var(--primary-100);
+}
