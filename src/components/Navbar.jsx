@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from './Button';
 import styles from './Navbar.module.css';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, LogOut, PlusCircle, LayoutDashboard, CircleUserRound, Table } from 'lucide-react';
+import { BookOpen, LogOut, PlusCircle, LayoutDashboard, CircleUserRound } from 'lucide-react';
 
 export const Navbar = () => {
     const { user, logout } = useAuth();
@@ -36,9 +36,6 @@ export const Navbar = () => {
                                 </Link>
                                 <Link to="/create-course" className={styles.link}>
                                     <PlusCircle size={18} /> Create Course
-                                </Link>
-                                <Link to="/educator-table" className={styles.link}>
-                                    <Table size={18} /> Educator Table
                                 </Link>
                             </>
                         ) : (

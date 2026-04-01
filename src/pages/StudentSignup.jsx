@@ -8,7 +8,7 @@ import { GraduationCap, AlertCircle, CheckCircle } from 'lucide-react';
 import styles from './Login.module.css';
 
 export const StudentSignup = () => {
-    const { signup, verifyOTP } = useAuth();
+    const { signup } = useAuth();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
@@ -16,8 +16,6 @@ export const StudentSignup = () => {
         password: '',
         confirmPassword: ''
     });
-    const [showOTP, setShowOTP] = useState(false);
-    const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -45,83 +43,16 @@ export const StudentSignup = () => {
 
         setLoading(true);
 
-        const result = await signup(formData.name, formData.email, formData.password);
+        const result = signup(formData.name, formData.email, formData.password);
         
         if (result.success) {
-            setShowOTP(true);
+            navigate('/student');
         } else {
             setError(result.error);
         }
         
         setLoading(false);
     };
-
-    const handleVerify = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-
-        const result = await verifyOTP(formData.email, otp);
-        if (result.success) {
-            navigate('/student/login');
-        } else {
-            setError(result.error);
-        }
-
-        setLoading(false);
-    };
-
-    if (showOTP) {
-        return (
-            <div className={styles.container}>
-                <Card className={styles.loginCard}>
-                    <div className={styles.header}>
-                        <div className={styles.logoIcon}>
-                            <GraduationCap size={24} color="white" />
-                        </div>
-                        <h1 className={styles.title}>Verify Email</h1>
-                        <p className={styles.subtitle}>Enter the OTP sent to {formData.email}</p>
-                    </div>
-
-                    <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div>
-                            <label htmlFor="otp" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--gray-700)' }}>
-                                Verification Code
-                            </label>
-                            <Input
-                                id="otp"
-                                name="otp"
-                                type="text"
-                                placeholder="Enter 6-digit OTP"
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        {error && (
-                            <div style={{ 
-                                padding: '0.75rem', 
-                                background: 'var(--error-50)', 
-                                borderRadius: 'var(--radius-md)',
-                                color: 'var(--error-700)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem'
-                            }}>
-                                <AlertCircle size={18} />
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        <Button type="submit" disabled={loading} style={{ width: '100%' }}>
-                            {loading ? 'Verifying...' : 'Verify'}
-                        </Button>
-                    </form>
-                </Card>
-            </div>
-        );
-    }
 
     return (
         <div className={styles.container}>

@@ -20,7 +20,7 @@ export const StudentLogin = () => {
         setError('');
         setLoading(true);
 
-        const result = await loginWithCredentials(email, password);
+        const result = loginWithCredentials(email, password);
         
         if (result.success && result.user.role === 'student') {
             navigate('/student');

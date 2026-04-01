@@ -8,7 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 export const EducatorDashboard = () => {
-    const { courses, deleteCourse, getCourseStudents } = useCourses();
+    const { courses, deleteCourse } = useCourses();
     const { getStudentCount } = useAuth();
     const navigate = useNavigate();
 
@@ -67,16 +67,6 @@ export const EducatorDashboard = () => {
                             <span className={styles.badge}>{course.modules?.length || 0} Modules</span>
                         </div>
                         <p className={styles.courseDesc}>{course.description}</p>
-                        
-                        <div style={{ fontSize: '0.9rem', color: 'var(--gray-600)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <Users size={16} /> 
-                            <span>
-                                {course.registeredStudents !== undefined 
-                                    ? course.registeredStudents 
-                                    : getCourseStudents(course.id).length} Students Registered
-                            </span>
-                        </div>
-
                         <div className={styles.courseFooter}>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <Button variant="outline" size="sm" onClick={() => navigate(`/edit-course/${course.id}`)}>Edit</Button>

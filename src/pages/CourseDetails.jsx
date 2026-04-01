@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { CheckCircle, FileText, Upload } from 'lucide-react';
+import { CheckCircle, PlayCircle, FileText, Upload } from 'lucide-react';
+import { toEmbeddableYouTubeUrl } from '../utils/videoUrl';
 
 export const CourseDetails = () => {
     const { courseId } = useParams();
@@ -32,6 +33,10 @@ export const CourseDetails = () => {
 
     const modules = course?.modules || [];
     const currentModule = modules[activeModule];
+    const currentModuleVideoSource = currentModule?.videoSource || 'youtube';
+    const currentModuleVideoUrl = currentModuleVideoSource === 'youtube'
+        ? toEmbeddableYouTubeUrl(currentModule?.videoUrl)
+        : currentModule?.videoUrl;
     const completedModules = userId ? getCompletedModules(userId, courseId) : null;
     const assignmentScore = userId ? getAssignmentScore(userId, courseId) : null;
     const assignmentGraded = userId ? isAssignmentGraded(userId, courseId) : false;
@@ -128,22 +133,59 @@ export const CourseDetails = () => {
                         <h2 style={{ fontSize: '1.5rem' }}>{currentModule ? currentModule.title : 'No content'}</h2>
                     </div>
 
-                    <div style={{ minHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', marginBottom: '2rem' }}>
-                        {currentModule ? (
-                            <div style={{ textAlign: 'center' }}>
-                                <p style={{ maxWidth: '600px', color: 'var(--gray-700)', fontSize: '1rem', fontWeight: 600 }}>
-                                    {currentModule.title}
-                                </p>
+                    {/* Video Player or Content */}
+                    {currentModule && currentModuleVideoUrl ? (
+                        <div style={{ marginBottom: '2rem' }}>
+                            {currentModuleVideoSource === 'upload' ? (
+                                <video
+                                    controls
+                                    style={{ width: '100%', borderRadius: 'var(--radius-lg)', background: 'var(--gray-900)' }}
+                                    src={currentModuleVideoUrl}
+                                />
+                            ) : (
+                                <div style={{ 
+                                    position: 'relative', 
+                                    paddingBottom: '56.25%', /* 16:9 aspect ratio */
+                                    height: 0,
+                                    overflow: 'hidden',
+                                    borderRadius: 'var(--radius-lg)',
+                                    background: 'var(--gray-900)'
+                                }}>
+                                    <iframe
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            border: 'none'
+                                        }}
+                                        src={currentModuleVideoUrl}
+                                        title={currentModule.title}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                </div>
+                            )}
+                            <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)' }}>
+                                <p style={{ color: 'var(--gray-700)', fontSize: '0.95rem' }}>{currentModule.content}</p>
                                 {!completedModules?.includes(currentModule.id) && (
-                                    <p style={{ marginTop: '0.5rem', color: 'var(--gray-500)', fontSize: '0.8rem' }}>
-                                        Keep this module open for about 15 seconds to mark it complete.
-                                    </p>
+                                    <p style={{ marginTop: '0.5rem', color: 'var(--gray-500)', fontSize: '0.8rem' }}>Keep this video open for about 15 seconds to mark this module complete.</p>
                                 )}
                             </div>
-                        ) : (
+                        </div>
+                    ) : currentModule ? (
+                        <div style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', marginBottom: '2rem' }}>
+                            <div style={{ textAlign: 'center' }}>
+                                <PlayCircle size={48} color="var(--primary-400)" style={{ marginBottom: '1rem' }} />
+                                <p style={{ maxWidth: '400px', color: 'var(--gray-600)' }}>{currentModule.content}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', marginBottom: '2rem' }}>
                             <p>Select a module to start learning.</p>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {allComponentsCompleted && hasPassedCourse && (
                         <div style={{ marginBottom: '1.5rem', background: 'var(--success)', color: 'white', borderRadius: 'var(--radius-md)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

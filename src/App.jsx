@@ -17,7 +17,6 @@ import { CourseDetails } from './pages/CourseDetails';
 import { EditCourse } from './pages/EditCourse';
 import { CourseStudents } from './pages/CourseStudents';
 import { StudentsList } from './pages/StudentsList';
-import { EducatorTable } from './pages/EducatorTable';
 import { AboutUs } from './pages/AboutUs';
 import { ContactUs } from './pages/ContactUs';
 
@@ -67,12 +66,6 @@ function App() {
           <Route path="/students" element={
             <ProtectedRoute allowedRole="educator">
               <StudentsList />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/educator-table" element={
-            <ProtectedRoute allowedRole="educator">
-              <EducatorTable />
             </ProtectedRoute>
           } />
 

@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { MOCK_COURSES } from '../data/mockData';
-import { fetchApi } from '../utils/api';
 
 const CourseContext = createContext();
 const COURSE_SEED_VERSION = '2026-02-fullstack-v1';
@@ -50,27 +49,12 @@ const normalizeAssignmentFields = (course = {}) => {
 
 const normalizeCourse = (course = {}) => {
     const normalizedModules = Array.isArray(course.modules)
-        ? course.modules.map((module, index) => {
-            if (typeof module === 'string') {
-                return {
-                    id: `m${index + 1}`,
-                    title: module,
-                    content: '',
-                    videoSource: 'youtube',
-                    videoUrl: '',
-                    uploadedVideoName: ''
-                };
-            }
-
-            return {
-                id: module.id || `m${index + 1}`,
-                title: module.title || '',
-                content: module.content || '',
-                videoSource: module.videoSource || (module.videoUrl && module.videoUrl.startsWith('data:video') ? 'upload' : 'youtube'),
-                videoUrl: module.videoUrl || '',
-                uploadedVideoName: module.uploadedVideoName || ''
-            };
-        })
+        ? course.modules.map(module => ({
+            ...module,
+            videoSource: module.videoSource || (module.videoUrl && module.videoUrl.startsWith('data:video') ? 'upload' : 'youtube'),
+            videoUrl: module.videoUrl || '',
+            uploadedVideoName: module.uploadedVideoName || ''
+        }))
         : [];
 
     return {
@@ -86,39 +70,6 @@ const normalizeCourses = (courseList) => {
     }
 
     return courseList.map(normalizeCourse);
-};
-
-const parseModulesFromApi = (modules) => {
-    if (Array.isArray(modules)) {
-        return modules;
-    }
-
-    if (typeof modules !== 'string' || !modules.trim()) {
-        return [];
-    }
-
-    try {
-        const parsed = JSON.parse(modules);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
-};
-
-const toModuleTitles = (modules) => {
-    if (!Array.isArray(modules)) {
-        return [];
-    }
-
-    return modules
-        .map((module) => {
-            if (typeof module === 'string') {
-                return module.trim();
-            }
-
-            return (module?.title || '').trim();
-        })
-        .filter(Boolean);
 };
 
 const getDefaultRegistrationDate = (offsetDays = 0) => {
@@ -160,52 +111,6 @@ export const CourseProvider = ({ children }) => {
         localStorage.setItem('coursesSeedVersion', COURSE_SEED_VERSION);
         return normalizedMockCourses;
     });
-
-    useEffect(() => {
-        const loadCourses = async () => {
-            try {
-                const apiCourses = await fetchApi('/courses/all');
-                if (Array.isArray(apiCourses) && apiCourses.length > 0) {
-                    // Parse modules from JSON strings if they exist
-                    const normalizedApiCourses = apiCourses.map(c => {
-                        const modules = parseModulesFromApi(c.modules);
-                        return normalizeCourse({ ...c, id: String(c.id), modules });
-                    });
-                    
-                    // Use only API courses - don't mix with mock courses since we have real data
-                    localStorage.setItem('courses', JSON.stringify(normalizedApiCourses));
-                    setCourses(normalizedApiCourses);
-                } else if (Array.isArray(apiCourses) && apiCourses.length === 0) {
-                    // Sync initial mock courses to the newly connected database
-                    const localCourses = parseJsonOrFallback(localStorage.getItem('courses'), MOCK_COURSES);
-                    for (const c of localCourses) {
-                        await fetchApi('/courses/create', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                title: c.title || '',
-                                description: c.description || '',
-                                modules: JSON.stringify(toModuleTitles(c.modules || [])),
-                                registeredStudents: c.registeredStudents || 0
-                            })
-                        }).catch(e => console.error(e));
-                    }
-                    // Reload synced courses
-                    const newApiCourses = await fetchApi('/courses/all');
-                    if (Array.isArray(newApiCourses) && newApiCourses.length > 0) {
-                        const normalized = newApiCourses.map(c => {
-                            const modules = parseModulesFromApi(c.modules);
-                            return normalizeCourse({ ...c, id: String(c.id), modules });
-                        });
-                        setCourses(normalized);
-                        localStorage.setItem('courses', JSON.stringify(normalized));
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to fetch courses from backend:", error);
-            }
-        };
-        loadCourses();
-    }, []);
 
     const [enrolledMap, setEnrolledMap] = useState(() => {
         const defaultEnrollments = { 'u2': ['c1', 'c2', 'c3'] };
@@ -280,43 +185,11 @@ export const CourseProvider = ({ children }) => {
         return Number.isNaN(date.getTime()) ? null : date;
     };
 
-    const addCourse = async (newCourse) => {
-        try {
-            const payload = {
-                title: newCourse.title || '',
-                description: newCourse.description || '',
-                modules: JSON.stringify(toModuleTitles(newCourse.modules || [])),
-                registeredStudents: 0
-            };
-
-            const apiCourse = await fetchApi('/courses/create', {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-
-            // Parse modules back from JSON string
-            const parsedCourse = {
-                ...apiCourse,
-                modules: apiCourse.modules ? JSON.parse(apiCourse.modules) : [],
-                id: String(apiCourse.id)
-            };
-
-            const normalizedNewCourse = normalizeCourse(parsedCourse);
-            const updatedCourses = [...courses, normalizedNewCourse];
-            setCourses(updatedCourses);
-            localStorage.setItem('courses', JSON.stringify(updatedCourses));
-            
-            return normalizedNewCourse;
-        } catch (error) {
-            console.error("Failed to create course via API:", error);
-            // Local fallback
-            const normalizedNewCourse = normalizeCourse({ ...newCourse, id: Date.now().toString() });
-            const updatedCourses = [...courses, normalizedNewCourse];
-            setCourses(updatedCourses);
-            localStorage.setItem('courses', JSON.stringify(updatedCourses));
-            
-            return normalizedNewCourse;
-        }
+    const addCourse = (newCourse) => {
+        const normalizedNewCourse = normalizeCourse({ ...newCourse, id: Date.now().toString() });
+        const updatedCourses = [...courses, normalizedNewCourse];
+        setCourses(updatedCourses);
+        localStorage.setItem('courses', JSON.stringify(updatedCourses));
     };
 
     const updateCourse = (updatedCourse) => {
@@ -324,17 +197,6 @@ export const CourseProvider = ({ children }) => {
         const updatedCourses = courses.map(c => c.id === normalizedUpdatedCourse.id ? normalizedUpdatedCourse : c);
         setCourses(updatedCourses);
         localStorage.setItem('courses', JSON.stringify(updatedCourses));
-        
-        // Optionally sync to backend
-        fetchApi(`/courses/update/${normalizedUpdatedCourse.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-                title: normalizedUpdatedCourse.title,
-                description: normalizedUpdatedCourse.description,
-                modules: JSON.stringify(toModuleTitles(normalizedUpdatedCourse.modules || [])),
-                registeredStudents: normalizedUpdatedCourse.registeredStudents || 0
-            })
-        }).catch(e => console.error("Failed to update course:", e));
     };
 
     const deleteCourse = (courseId) => {
@@ -384,48 +246,6 @@ export const CourseProvider = ({ children }) => {
             };
             setEnrollmentMetaMap(updatedEnrollmentMetaMap);
             localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
-
-            // Call backend enrollment endpoint to save to database
-            fetchApi(`/student-courses/enroll?studentId=${userId}&courseId=${courseId}`, {
-                method: 'POST'
-            }).then((enrollment) => {
-                console.log('Student enrolled successfully in database:', enrollment);
-                // Store enrollment ID for future reference (deletion)
-                setEnrollmentMetaMap(prevMap => ({
-                    ...prevMap,
-                    [userId]: {
-                        ...(prevMap[userId] || {}),
-                        [courseId]: {
-                            ...((prevMap[userId] || {})[courseId] || {}),
-                            enrollmentId: enrollment.id,
-                            registeredAt: new Date().toISOString()
-                        }
-                    }
-                }));
-            }).catch((error) => {
-                console.error('Failed to save enrollment to database:', error);
-            });
-
-            fetchApi(`/courses/${courseId}/student-count?delta=1`, {
-                method: 'PATCH'
-            }).then((updatedCourse) => {
-                setCourses((prevCourses) => {
-                    const nextCourses = prevCourses.map((course) =>
-                        course.id === String(updatedCourse.id)
-                            ? normalizeCourse({
-                                ...course,
-                                ...updatedCourse,
-                                id: String(updatedCourse.id),
-                                modules: updatedCourse.modules ? JSON.parse(updatedCourse.modules) : (course.modules || [])
-                            })
-                            : course
-                    );
-                    localStorage.setItem('courses', JSON.stringify(nextCourses));
-                    return nextCourses;
-                });
-            }).catch((error) => {
-                console.error('Failed to update student count in backend:', error);
-            });
         }
     };
 
@@ -440,8 +260,6 @@ export const CourseProvider = ({ children }) => {
             localStorage.setItem('enrollments', JSON.stringify(updatedMap));
 
             const userEnrollmentMeta = enrollmentMetaMap[userId] || {};
-            const enrollmentId = userEnrollmentMeta[courseId]?.enrollmentId;
-            
             if (userEnrollmentMeta[courseId]) {
                 const updatedUserEnrollmentMeta = { ...userEnrollmentMeta };
                 delete updatedUserEnrollmentMeta[courseId];
@@ -466,38 +284,6 @@ export const CourseProvider = ({ children }) => {
                 setProgressMap(updatedProgressMap);
                 localStorage.setItem('courseProgress', JSON.stringify(updatedProgressMap));
             }
-
-            // Delete enrollment from database if we have the enrollment ID
-            if (enrollmentId) {
-                fetchApi(`/student-courses/${enrollmentId}`, {
-                    method: 'DELETE'
-                }).then(() => {
-                    console.log('Enrollment deleted from database');
-                }).catch((error) => {
-                    console.error('Failed to delete enrollment from database:', error);
-                });
-            }
-
-            fetchApi(`/courses/${courseId}/student-count?delta=-1`, {
-                method: 'PATCH'
-            }).then((updatedCourse) => {
-                setCourses((prevCourses) => {
-                    const nextCourses = prevCourses.map((course) =>
-                        course.id === String(updatedCourse.id)
-                            ? normalizeCourse({
-                                ...course,
-                                ...updatedCourse,
-                                id: String(updatedCourse.id),
-                                modules: updatedCourse.modules ? JSON.parse(updatedCourse.modules) : (course.modules || [])
-                            })
-                            : course
-                    );
-                    localStorage.setItem('courses', JSON.stringify(nextCourses));
-                    return nextCourses;
-                });
-            }).catch((error) => {
-                console.error('Failed to update student count in backend:', error);
-            });
         }
     };
 
