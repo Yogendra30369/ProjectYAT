@@ -335,7 +335,10 @@ export const CourseProvider = ({ children }) => {
                                 title: c.title || '',
                                 description: c.description || '',
                                 modules: JSON.stringify(toPersistableModules(c.modules || [])),
-                                registeredStudents: c.registeredStudents || 0
+                                registeredStudents: c.registeredStudents || 0,
+                                assignmentFileName: c.assignmentFileName || '',
+                                assignmentFileType: c.assignmentFileType || '',
+                                assignmentFileDataUrl: c.assignmentFileDataUrl || ''
                             })
                         }).catch(e => console.error(e));
                     }
@@ -457,7 +460,10 @@ export const CourseProvider = ({ children }) => {
                 title: newCourse.title || '',
                 description: newCourse.description || '',
                 modules: JSON.stringify(toPersistableModules(newCourse.modules || [])),
-                registeredStudents: 0
+                registeredStudents: 0,
+                assignmentFileName: newCourse.assignmentFileName || '',
+                assignmentFileType: newCourse.assignmentFileType || '',
+                assignmentFileDataUrl: newCourse.assignmentFileDataUrl || ''
             };
 
             const apiCourse = await fetchApi('/courses/create', {
@@ -503,7 +509,10 @@ export const CourseProvider = ({ children }) => {
                 title: normalizedUpdatedCourse.title,
                 description: normalizedUpdatedCourse.description,
                 modules: JSON.stringify(toPersistableModules(normalizedUpdatedCourse.modules || [])),
-                registeredStudents: normalizedUpdatedCourse.registeredStudents || 0
+                registeredStudents: normalizedUpdatedCourse.registeredStudents || 0,
+                assignmentFileName: normalizedUpdatedCourse.assignmentFileName || '',
+                assignmentFileType: normalizedUpdatedCourse.assignmentFileType || '',
+                assignmentFileDataUrl: normalizedUpdatedCourse.assignmentFileDataUrl || ''
             })
         }).catch(e => console.error("Failed to update course:", e));
     };

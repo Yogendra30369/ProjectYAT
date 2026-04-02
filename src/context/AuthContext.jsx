@@ -152,6 +152,16 @@ const extractBackendRole = (payload) => {
     return roleMatch?.[1] || '';
 };
 
+const extractBackendName = (payload) => {
+    if (payload && typeof payload === 'object') {
+        return payload.name || payload.user?.name || payload.data?.name || '';
+    }
+
+    const text = getLoginMessageText(payload);
+    const nameMatch = text.match(/name\s*[:=]\s*([^,]+)/i);
+    return nameMatch?.[1]?.trim() || '';
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         const storedUser = localStorage.getItem('user');
@@ -250,7 +260,7 @@ export const AuthProvider = ({ children }) => {
                 
                 let foundUser = usersDb.find((candidateUser) => candidateUser.email.toLowerCase() === email.toLowerCase());
 
-                if (!backendUserId) {
+                if (!foundUser) {
                     const userFromBackendLookup = await resolveUserByEmailFromBackend(email);
                     if (userFromBackendLookup) {
                         foundUser = userFromBackendLookup;
@@ -267,7 +277,7 @@ export const AuthProvider = ({ children }) => {
 
                     foundUser = {
                         id: String(backendUserId),
-                        name: email.split('@')[0],
+                        name: extractBackendName(data) || email.split('@')[0],
                         email,
                         role
                     };
@@ -275,14 +285,27 @@ export const AuthProvider = ({ children }) => {
                     const updatedUsersDb = [...usersDb, foundUser];
                     setUsersDb(updatedUsersDb);
                     localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
-                } else if (backendUserId && String(foundUser.id) !== String(backendUserId)) {
-                    // Sync backend ID if it changed
-                    foundUser.id = String(backendUserId);
-                    const updatedUsersDb = usersDb.map((candidateUser) =>
-                        candidateUser.email.toLowerCase() === email.toLowerCase() ? foundUser : candidateUser
-                    );
-                    setUsersDb(updatedUsersDb);
-                    localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
+                } else {
+                    let needsSync = false;
+                    
+                    if (backendUserId && String(foundUser.id) !== String(backendUserId)) {
+                        foundUser.id = String(backendUserId);
+                        needsSync = true;
+                    }
+                    
+                    const nameFromBackend = extractBackendName(data);
+                    if (nameFromBackend && (!foundUser.name || foundUser.name === email.split('@')[0])) {
+                        foundUser.name = nameFromBackend;
+                        needsSync = true;
+                    }
+                    
+                    if (needsSync) {
+                        const updatedUsersDb = usersDb.map((candidateUser) =>
+                            candidateUser.email.toLowerCase() === email.toLowerCase() ? foundUser : candidateUser
+                        );
+                        setUsersDb(updatedUsersDb);
+                        localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
+                    }
                 }
                 
                 setUser(foundUser);
