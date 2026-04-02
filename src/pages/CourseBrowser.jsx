@@ -14,9 +14,14 @@ export const CourseBrowser = () => {
 
     const enrolledIds = getEnrolledCourses(user.id).map(c => c.id);
 
-    const handleEnroll = (courseId) => {
-        enroll(user.id, courseId);
-        navigate('/student');
+    const handleEnroll = async (courseId) => {
+        try {
+            await enroll(user.id, courseId);
+            navigate('/student');
+        } catch (error) {
+            console.error('Failed to enroll:', error);
+            alert('Failed to enroll. Please try again.');
+        }
     };
 
     return (

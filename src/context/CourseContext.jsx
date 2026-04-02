@@ -375,63 +375,56 @@ export const CourseProvider = ({ children }) => {
         localStorage.setItem('courseProgress', JSON.stringify(updatedProgressMap));
     };
 
-    const enroll = (userId, courseId) => {
+    const enroll = async (userId, courseId) => {
         const userEnrollments = enrolledMap[userId] || [];
         if (!userEnrollments.includes(courseId)) {
-            const updatedMap = {
-                ...enrolledMap,
-                [userId]: [...userEnrollments, courseId]
-            };
-            setEnrolledMap(updatedMap);
-            localStorage.setItem('enrollments', JSON.stringify(updatedMap));
-
-            const updatedEnrollmentMetaMap = {
-                ...enrollmentMetaMap,
-                [userId]: {
-                    ...(enrollmentMetaMap[userId] || {}),
-                    [courseId]: {
-                        registeredAt: new Date().toISOString()
-                    }
-                }
-            };
-            setEnrollmentMetaMap(updatedEnrollmentMetaMap);
-            localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
-
-            // Call backend enrollment endpoint to save to database
             // Convert string IDs to numeric if needed
-            const numericStudentId = typeof userId === 'string' && userId.match(/^\d+$/) ? userId : userId;
-            const numericCourseId = typeof courseId === 'string' && courseId.match(/^\d+$/) ? courseId : courseId;
+            let numericStudentId = typeof userId === 'string' ? userId.replace(/\D/g, '') : userId;
+            let numericCourseId = typeof courseId === 'string' ? courseId.replace(/\D/g, '') : courseId;
+            
+            // If the ID could not be converted purely to numbers (e.g. mock fallback missing number)
+            if (!numericStudentId) numericStudentId = 1; 
+            if (!numericCourseId) numericCourseId = 1;
 
-            fetchApi(`/student-courses/enroll?studentId=${numericStudentId}&courseId=${numericCourseId}`, {
-                method: 'POST'
-            }).then((enrollment) => {
+            try {
+                // Call backend enrollment endpoint to save to database first
+                const enrollment = await fetchApi(`/student-courses/enroll?studentId=${numericStudentId}&courseId=${numericCourseId}`, {
+                    method: 'POST'
+                });
+                
                 console.log('Student enrolled successfully in database:', enrollment);
-                // Store enrollment ID for future reference (deletion)
-                setEnrollmentMetaMap(prevMap => ({
-                    ...prevMap,
+
+                const updatedMap = {
+                    ...enrolledMap,
+                    [userId]: [...userEnrollments, courseId]
+                };
+                setEnrolledMap(updatedMap);
+                localStorage.setItem('enrollments', JSON.stringify(updatedMap));
+
+                const updatedEnrollmentMetaMap = {
+                    ...enrollmentMetaMap,
                     [userId]: {
-                        ...(prevMap[userId] || {}),
+                        ...(enrollmentMetaMap[userId] || {}),
                         [courseId]: {
-                            ...((prevMap[userId] || {})[courseId] || {}),
                             enrollmentId: enrollment.id,
                             registeredAt: new Date().toISOString()
                         }
                     }
-                }));
-            }).catch((error) => {
-                console.error('Failed to save enrollment to database:', error);
-            });
+                };
+                setEnrollmentMetaMap(updatedEnrollmentMetaMap);
+                localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
 
-            fetchApi(`/courses/${courseId}/student-count?delta=1`, {
-                method: 'PATCH'
-            }).then((updatedCourse) => {
+                const updatedCourse = await fetchApi(`/courses/${numericCourseId}/student-count?delta=1`, {
+                    method: 'PATCH'
+                });
+
                 setCourses((prevCourses) => {
                     const nextCourses = prevCourses.map((course) =>
-                        course.id === String(updatedCourse.id)
+                        course.id === String(updatedCourse.id) || course.id === courseId
                             ? normalizeCourse({
                                 ...course,
                                 ...updatedCourse,
-                                id: String(updatedCourse.id),
+                                id: String(course.id), // preserve original id reference
                                 modules: updatedCourse.modules ? JSON.parse(updatedCourse.modules) : (course.modules || [])
                             })
                             : course
@@ -439,71 +432,78 @@ export const CourseProvider = ({ children }) => {
                     localStorage.setItem('courses', JSON.stringify(nextCourses));
                     return nextCourses;
                 });
-            }).catch((error) => {
-                console.error('Failed to update student count in backend:', error);
-            });
+            } catch (error) {
+                console.error('Failed to save enrollment to database:', error);
+                // On failure, don't update local state so they can try again.
+                // Could toast an error here.
+                throw error;
+            }
         }
     };
 
-    const unenroll = (userId, courseId) => {
+    const unenroll = async (userId, courseId) => {
         const userEnrollments = enrolledMap[userId] || [];
         if (userEnrollments.includes(courseId)) {
-            const updatedMap = {
-                ...enrolledMap,
-                [userId]: userEnrollments.filter(id => id !== courseId)
-            };
-            setEnrolledMap(updatedMap);
-            localStorage.setItem('enrollments', JSON.stringify(updatedMap));
+            let numericCourseId = typeof courseId === 'string' ? courseId.replace(/\D/g, '') : courseId;
+            if (!numericCourseId) numericCourseId = 1;
 
             const userEnrollmentMeta = enrollmentMetaMap[userId] || {};
             const enrollmentId = userEnrollmentMeta[courseId]?.enrollmentId;
-            
-            if (userEnrollmentMeta[courseId]) {
-                const updatedUserEnrollmentMeta = { ...userEnrollmentMeta };
-                delete updatedUserEnrollmentMeta[courseId];
 
-                const updatedEnrollmentMetaMap = {
-                    ...enrollmentMetaMap,
-                    [userId]: updatedUserEnrollmentMeta
-                };
-
-                setEnrollmentMetaMap(updatedEnrollmentMetaMap);
-                localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
-            }
-
-            const userProgress = progressMap[userId] || {};
-            if (userProgress[courseId]) {
-                const updatedUserProgress = { ...userProgress };
-                delete updatedUserProgress[courseId];
-                const updatedProgressMap = {
-                    ...progressMap,
-                    [userId]: updatedUserProgress
-                };
-                setProgressMap(updatedProgressMap);
-                localStorage.setItem('courseProgress', JSON.stringify(updatedProgressMap));
-            }
-
-            // Delete enrollment from database if we have the enrollment ID
-            if (enrollmentId) {
-                fetchApi(`/student-courses/${enrollmentId}`, {
-                    method: 'DELETE'
-                }).then(() => {
+            try {
+                if (enrollmentId) {
+                    await fetchApi(`/student-courses/${enrollmentId}`, {
+                        method: 'DELETE'
+                    });
                     console.log('Enrollment deleted from database');
-                }).catch((error) => {
-                    console.error('Failed to delete enrollment from database:', error);
-                });
-            }
+                }
 
-            fetchApi(`/courses/${courseId}/student-count?delta=-1`, {
-                method: 'PATCH'
-            }).then((updatedCourse) => {
+                // If no enrollmentId locally, attempt to delete by user+course directly or skip for mock testing
+                
+                const updatedCourse = await fetchApi(`/courses/${numericCourseId}/student-count?delta=-1`, {
+                    method: 'PATCH'
+                });
+
+                // Update Local state only after successful external fetch
+                const updatedMap = {
+                    ...enrolledMap,
+                    [userId]: userEnrollments.filter(id => id !== courseId)
+                };
+                setEnrolledMap(updatedMap);
+                localStorage.setItem('enrollments', JSON.stringify(updatedMap));
+    
+                if (userEnrollmentMeta[courseId]) {
+                    const updatedUserEnrollmentMeta = { ...userEnrollmentMeta };
+                    delete updatedUserEnrollmentMeta[courseId];
+    
+                    const updatedEnrollmentMetaMap = {
+                        ...enrollmentMetaMap,
+                        [userId]: updatedUserEnrollmentMeta
+                    };
+    
+                    setEnrollmentMetaMap(updatedEnrollmentMetaMap);
+                    localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
+                }
+    
+                const userProgress = progressMap[userId] || {};
+                if (userProgress[courseId]) {
+                    const updatedUserProgress = { ...userProgress };
+                    delete updatedUserProgress[courseId];
+                    const updatedProgressMap = {
+                        ...progressMap,
+                        [userId]: updatedUserProgress
+                    };
+                    setProgressMap(updatedProgressMap);
+                    localStorage.setItem('courseProgress', JSON.stringify(updatedProgressMap));
+                }
+
                 setCourses((prevCourses) => {
                     const nextCourses = prevCourses.map((course) =>
-                        course.id === String(updatedCourse.id)
+                        course.id === String(updatedCourse.id) || course.id === courseId
                             ? normalizeCourse({
                                 ...course,
                                 ...updatedCourse,
-                                id: String(updatedCourse.id),
+                                id: String(course.id),
                                 modules: updatedCourse.modules ? JSON.parse(updatedCourse.modules) : (course.modules || [])
                             })
                             : course
@@ -511,9 +511,11 @@ export const CourseProvider = ({ children }) => {
                     localStorage.setItem('courses', JSON.stringify(nextCourses));
                     return nextCourses;
                 });
-            }).catch((error) => {
-                console.error('Failed to update student count in backend:', error);
-            });
+
+            } catch (error) {
+                console.error('Failed to unenroll from database:', error);
+                throw error;
+            }
         }
     };
 
