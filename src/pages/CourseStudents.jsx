@@ -10,7 +10,7 @@ export const CourseStudents = () => {
     const { courseId } = useParams();
     const navigate = useNavigate();
     const { users } = useAuth();
-    const { courses, getCourseStudents, pruneInvalidEnrollments, getAssignmentDetails, gradeAssignment, getCourseProgress } = useCourses();
+    const { courses, getCourseStudents, getAssignmentDetails, gradeAssignment, getCourseProgress } = useCourses();
     const [gradeInputs, setGradeInputs] = useState({});
 
     const course = courses.find(c => c.id === courseId);
@@ -19,10 +19,6 @@ export const CourseStudents = () => {
     const enrolledStudents = studentIds
         .map(id => users.find(u => u.id === id && u.role === 'student'))
         .filter(Boolean);
-
-    useEffect(() => {
-        pruneInvalidEnrollments(users.map(u => u.id));
-    }, [pruneInvalidEnrollments, users]);
 
     useEffect(() => {
         const initialGrades = {};

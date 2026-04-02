@@ -50,6 +50,10 @@ export const AuthProvider = ({ children }) => {
             });
 
             if (data.includes('successful')) {
+                // Extract numeric user ID from backend response
+                const idMatch = data.match(/User ID: (\d+)/);
+                const backendUserId = idMatch ? Number(idMatch[1]) : null;
+
                 // Fallback to determine role and local mock db
                 const isEducator = email.includes('admin') || email.includes('educator');
                 const role = isEducator ? 'educator' : 'student';
@@ -57,12 +61,22 @@ export const AuthProvider = ({ children }) => {
                 let foundUser = usersDb.find(u => u.email === email);
                 if (!foundUser) {
                     foundUser = {
-                        id: `u${Date.now()}`,
+                        id: backendUserId || `u${Date.now()}`,
                         name: email.split('@')[0],
                         email,
                         role: role,
                         enrolledCourses: []
                     };
+
+                    const updatedUsersDb = [...usersDb, foundUser];
+                    setUsersDb(updatedUsersDb);
+                    localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
+                } else if (backendUserId && foundUser.id !== backendUserId) {
+                    // Sync backend ID if it changed
+                    foundUser.id = backendUserId;
+                    const updatedUsersDb = usersDb.map(u => u.email === email ? foundUser : u);
+                    setUsersDb(updatedUsersDb);
+                    localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
                 }
                 
                 const userWithoutPassword = { ...foundUser };

@@ -105,20 +105,32 @@ const parseModulesFromApi = (modules) => {
     }
 };
 
-const toModuleTitles = (modules) => {
+const toPersistableModules = (modules) => {
     if (!Array.isArray(modules)) {
         return [];
     }
 
-    return modules
-        .map((module) => {
-            if (typeof module === 'string') {
-                return module.trim();
-            }
+    return modules.map((module, index) => {
+        if (typeof module === 'string') {
+            return {
+                id: `m${index + 1}`,
+                title: module.trim(),
+                content: '',
+                videoSource: 'youtube',
+                videoUrl: '',
+                uploadedVideoName: ''
+            };
+        }
 
-            return (module?.title || '').trim();
-        })
-        .filter(Boolean);
+        return {
+            id: module?.id || `m${index + 1}`,
+            title: module?.title || '',
+            content: module?.content || '',
+            videoSource: module?.videoSource || (module?.videoUrl && module.videoUrl.startsWith('data:video') ? 'upload' : 'youtube'),
+            videoUrl: module?.videoUrl || '',
+            uploadedVideoName: module?.uploadedVideoName || ''
+        };
+    });
 };
 
 const getDefaultRegistrationDate = (offsetDays = 0) => {
@@ -184,7 +196,7 @@ export const CourseProvider = ({ children }) => {
                             body: JSON.stringify({
                                 title: c.title || '',
                                 description: c.description || '',
-                                modules: JSON.stringify(toModuleTitles(c.modules || [])),
+                                modules: JSON.stringify(toPersistableModules(c.modules || [])),
                                 registeredStudents: c.registeredStudents || 0
                             })
                         }).catch(e => console.error(e));
@@ -285,7 +297,7 @@ export const CourseProvider = ({ children }) => {
             const payload = {
                 title: newCourse.title || '',
                 description: newCourse.description || '',
-                modules: JSON.stringify(toModuleTitles(newCourse.modules || [])),
+                modules: JSON.stringify(toPersistableModules(newCourse.modules || [])),
                 registeredStudents: 0
             };
 
@@ -331,7 +343,7 @@ export const CourseProvider = ({ children }) => {
             body: JSON.stringify({
                 title: normalizedUpdatedCourse.title,
                 description: normalizedUpdatedCourse.description,
-                modules: JSON.stringify(toModuleTitles(normalizedUpdatedCourse.modules || [])),
+                modules: JSON.stringify(toPersistableModules(normalizedUpdatedCourse.modules || [])),
                 registeredStudents: normalizedUpdatedCourse.registeredStudents || 0
             })
         }).catch(e => console.error("Failed to update course:", e));
@@ -386,7 +398,11 @@ export const CourseProvider = ({ children }) => {
             localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
 
             // Call backend enrollment endpoint to save to database
-            fetchApi(`/student-courses/enroll?studentId=${userId}&courseId=${courseId}`, {
+            // Convert string IDs to numeric if needed
+            const numericStudentId = typeof userId === 'string' && userId.match(/^\d+$/) ? userId : userId;
+            const numericCourseId = typeof courseId === 'string' && courseId.match(/^\d+$/) ? courseId : courseId;
+
+            fetchApi(`/student-courses/enroll?studentId=${numericStudentId}&courseId=${numericCourseId}`, {
                 method: 'POST'
             }).then((enrollment) => {
                 console.log('Student enrolled successfully in database:', enrollment);

@@ -6,6 +6,31 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { CheckCircle, FileText, Upload } from 'lucide-react';
+import { toEmbeddableYouTubeUrl } from '../utils/videoUrl';
+
+const getModuleVideoMode = (module) => {
+    if (!module?.videoUrl) {
+        return 'none';
+    }
+
+    if (module.videoSource === 'upload' || module.videoUrl.startsWith('data:video')) {
+        return 'upload';
+    }
+
+    return 'youtube';
+};
+
+const getPlayableVideoUrl = (module) => {
+    if (!module?.videoUrl) {
+        return '';
+    }
+
+    if (getModuleVideoMode(module) === 'upload') {
+        return module.videoUrl;
+    }
+
+    return toEmbeddableYouTubeUrl(module.videoUrl);
+};
 
 export const CourseDetails = () => {
     const { courseId } = useParams();
@@ -128,10 +153,37 @@ export const CourseDetails = () => {
                         <h2 style={{ fontSize: '1.5rem' }}>{currentModule ? currentModule.title : 'No content'}</h2>
                     </div>
 
-                    <div style={{ minHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', marginBottom: '2rem' }}>
+                    <div style={{ minHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', marginBottom: '2rem', padding: '1rem' }}>
                         {currentModule ? (
-                            <div style={{ textAlign: 'center' }}>
-                                <p style={{ maxWidth: '600px', color: 'var(--gray-700)', fontSize: '1rem', fontWeight: 600 }}>
+                            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                                {getModuleVideoMode(currentModule) === 'youtube' && getPlayableVideoUrl(currentModule) && (
+                                    <div style={{ width: '100%', maxWidth: '860px', aspectRatio: '16 / 9', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000' }}>
+                                        <iframe
+                                            src={getPlayableVideoUrl(currentModule)}
+                                            title={currentModule.title || 'Course module video'}
+                                            style={{ width: '100%', height: '100%', border: 'none' }}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            referrerPolicy="strict-origin-when-cross-origin"
+                                            allowFullScreen
+                                        />
+                                    </div>
+                                )}
+
+                                {getModuleVideoMode(currentModule) === 'upload' && getPlayableVideoUrl(currentModule) && (
+                                    <video
+                                        controls
+                                        style={{ width: '100%', maxWidth: '860px', borderRadius: 'var(--radius-md)', background: '#000' }}
+                                        src={getPlayableVideoUrl(currentModule)}
+                                    />
+                                )}
+
+                                {getModuleVideoMode(currentModule) === 'none' && (
+                                    <p style={{ maxWidth: '600px', color: 'var(--gray-600)', fontSize: '0.95rem' }}>
+                                        No video available for this module yet.
+                                    </p>
+                                )}
+
+                                <p style={{ maxWidth: '600px', color: 'var(--gray-700)', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
                                     {currentModule.title}
                                 </p>
                                 {!completedModules?.includes(currentModule.id) && (
