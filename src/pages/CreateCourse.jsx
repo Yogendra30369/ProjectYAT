@@ -35,10 +35,12 @@ export const CreateCourse = () => {
     };
 
     const handleModuleChange = (id, field, value) => {
-        const updatedModules = formData.modules.map(m =>
-            m.id === id ? { ...m, [field]: value } : m
-        );
-        setFormData({ ...formData, modules: updatedModules });
+        setFormData((currentFormData) => ({
+            ...currentFormData,
+            modules: currentFormData.modules.map((module) =>
+                module.id === id ? { ...module, [field]: value } : module
+            )
+        }));
     };
 
     const addModule = () => {
@@ -90,12 +92,12 @@ export const CreateCourse = () => {
 
         const reader = new FileReader();
         reader.onload = () => {
-            setFormData({
-                ...formData,
+            setFormData((currentFormData) => ({
+                ...currentFormData,
                 assignmentFileName: file.name,
                 assignmentFileType: file.type,
                 assignmentFileDataUrl: reader.result
-            });
+            }));
         };
         reader.readAsDataURL(file);
     };
@@ -115,8 +117,19 @@ export const CreateCourse = () => {
 
         const reader = new FileReader();
         reader.onload = () => {
-            handleModuleChange(moduleId, 'videoUrl', reader.result);
-            handleModuleChange(moduleId, 'uploadedVideoName', file.name);
+            setFormData((currentFormData) => ({
+                ...currentFormData,
+                modules: currentFormData.modules.map((module) =>
+                    module.id === moduleId
+                        ? {
+                            ...module,
+                            videoUrl: reader.result,
+                            uploadedVideoName: file.name,
+                            videoSource: 'upload'
+                        }
+                        : module
+                )
+            }));
         };
         reader.readAsDataURL(file);
     };

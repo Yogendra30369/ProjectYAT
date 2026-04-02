@@ -4,7 +4,6 @@ import { fetchApi } from '../utils/api';
 
 const CourseContext = createContext();
 const COURSE_SEED_VERSION = '2026-02-fullstack-v1';
-const ENROLLMENT_SEED_VERSION = '2026-02-fullstack-v1';
 
 const parseJsonOrFallback = (value, fallback) => {
     if (!value) {
@@ -105,6 +104,31 @@ const parseModulesFromApi = (modules) => {
     }
 };
 
+const getNormalizedCourseKey = (courseId) => {
+    if (courseId === null || courseId === undefined) {
+        return '';
+    }
+
+    const value = String(courseId).trim();
+    if (!value) {
+        return '';
+    }
+
+    const digitMatch = value.match(/\d+/);
+    if (digitMatch) {
+        return digitMatch[0];
+    }
+
+    return value.toLowerCase();
+};
+
+const courseIdsMatch = (leftCourseId, rightCourseId) => {
+    const leftKey = getNormalizedCourseKey(leftCourseId);
+    const rightKey = getNormalizedCourseKey(rightCourseId);
+
+    return leftKey !== '' && leftKey === rightKey;
+};
+
 const toPersistableModules = (modules) => {
     if (!Array.isArray(modules)) {
         return [];
@@ -153,6 +177,120 @@ const buildEnrollmentMetaFromMap = (enrollmentMap) => {
         acc[userId] = userMeta;
         return acc;
     }, {});
+};
+
+const isLegacyUserId = (value) => /^u\d+$/i.test(String(value || ''));
+const isLegacyCourseId = (value) => /^c\d+$/i.test(String(value || ''));
+
+const sanitizeEnrollmentMap = (enrollmentMap = {}) => {
+    return Object.entries(enrollmentMap).reduce((acc, [userId, courseIds]) => {
+        if (isLegacyUserId(userId)) {
+            return acc;
+        }
+
+        const cleanedCourseIds = (Array.isArray(courseIds) ? courseIds : [])
+            .map((courseId) => String(courseId))
+            .filter((courseId) => !isLegacyCourseId(courseId));
+
+        if (cleanedCourseIds.length > 0) {
+            acc[String(userId)] = cleanedCourseIds;
+        }
+
+        return acc;
+    }, {});
+};
+
+const sanitizeEnrollmentMetaMap = (enrollmentMetaMap = {}) => {
+    return Object.entries(enrollmentMetaMap).reduce((acc, [userId, perCourseMeta]) => {
+        if (isLegacyUserId(userId) || !perCourseMeta || typeof perCourseMeta !== 'object') {
+            return acc;
+        }
+
+        const cleanedPerCourseMeta = Object.entries(perCourseMeta).reduce((innerAcc, [courseId, meta]) => {
+            if (!isLegacyCourseId(courseId)) {
+                innerAcc[String(courseId)] = meta;
+            }
+
+            return innerAcc;
+        }, {});
+
+        if (Object.keys(cleanedPerCourseMeta).length > 0) {
+            acc[String(userId)] = cleanedPerCourseMeta;
+        }
+
+        return acc;
+    }, {});
+};
+
+const extractEnrollmentsFromResponse = (payload) => {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (!payload || typeof payload !== 'object') {
+        return [];
+    }
+
+    const listLikeKeys = ['data', 'items', 'content', 'enrollments', 'records'];
+    for (const key of listLikeKeys) {
+        if (Array.isArray(payload[key])) {
+            return payload[key];
+        }
+    }
+
+    return [];
+};
+
+const toEnrollmentRecord = (enrollment) => {
+    const studentId = enrollment?.studentId
+        ?? enrollment?.student_id
+        ?? enrollment?.student?.id
+        ?? enrollment?.userId
+        ?? enrollment?.user?.id;
+
+    const courseId = enrollment?.courseId
+        ?? enrollment?.course_id
+        ?? enrollment?.course?.id;
+
+    if (studentId === undefined || studentId === null || courseId === undefined || courseId === null) {
+        return null;
+    }
+
+    return {
+        id: enrollment?.id,
+        userId: String(studentId),
+        courseId: String(courseId),
+        registeredAt: enrollment?.registeredAt || enrollment?.enrolledAt || enrollment?.createdAt || null
+    };
+};
+
+const buildEnrollmentStateFromRecords = (records) => {
+    const nextMap = {};
+    const nextMetaMap = {};
+
+    records.forEach((record) => {
+        if (!nextMap[record.userId]) {
+            nextMap[record.userId] = [];
+        }
+
+        if (!nextMap[record.userId].includes(record.courseId)) {
+            nextMap[record.userId].push(record.courseId);
+        }
+
+        if (!nextMetaMap[record.userId]) {
+            nextMetaMap[record.userId] = {};
+        }
+
+        nextMetaMap[record.userId][record.courseId] = {
+            enrollmentId: record.id,
+            registeredAt: record.registeredAt || getDefaultRegistrationDate()
+        };
+    });
+
+    return {
+        enrolledMap: nextMap,
+        enrollmentMetaMap: nextMetaMap
+    };
 };
 
 export const CourseProvider = ({ children }) => {
@@ -220,36 +358,57 @@ export const CourseProvider = ({ children }) => {
     }, []);
 
     const [enrolledMap, setEnrolledMap] = useState(() => {
-        const defaultEnrollments = { 'u2': ['c1', 'c2', 'c3'] };
         const storedEnrollments = localStorage.getItem('enrollments');
-        const storedEnrollmentSeedVersion = localStorage.getItem('enrollmentsSeedVersion');
-
-        if (storedEnrollments && storedEnrollmentSeedVersion === ENROLLMENT_SEED_VERSION) {
-            return parseJsonOrFallback(storedEnrollments, defaultEnrollments);
-        }
-
-        localStorage.setItem('enrollments', JSON.stringify(defaultEnrollments));
-        localStorage.setItem('enrollmentsSeedVersion', ENROLLMENT_SEED_VERSION);
-        return defaultEnrollments;
+        const parsedEnrollments = parseJsonOrFallback(storedEnrollments, {});
+        const sanitizedEnrollments = sanitizeEnrollmentMap(parsedEnrollments);
+        localStorage.setItem('enrollments', JSON.stringify(sanitizedEnrollments));
+        return sanitizedEnrollments;
     });
 
     const [enrollmentMetaMap, setEnrollmentMetaMap] = useState(() => {
         const storedEnrollmentMeta = localStorage.getItem('enrollmentMeta');
         if (storedEnrollmentMeta) {
-            return parseJsonOrFallback(storedEnrollmentMeta, {});
+            const parsedMeta = parseJsonOrFallback(storedEnrollmentMeta, {});
+            const sanitizedMeta = sanitizeEnrollmentMetaMap(parsedMeta);
+            localStorage.setItem('enrollmentMeta', JSON.stringify(sanitizedMeta));
+            return sanitizedMeta;
         }
 
-        const defaultEnrollments = { 'u2': ['c1', 'c2', 'c3'] };
-        const storedEnrollments = localStorage.getItem('enrollments');
-        const storedEnrollmentSeedVersion = localStorage.getItem('enrollmentsSeedVersion');
-        const currentEnrollments = storedEnrollments && storedEnrollmentSeedVersion === ENROLLMENT_SEED_VERSION
-            ? parseJsonOrFallback(storedEnrollments, defaultEnrollments)
-            : defaultEnrollments;
-
+        const currentEnrollments = sanitizeEnrollmentMap(parseJsonOrFallback(localStorage.getItem('enrollments'), {}));
         const defaultEnrollmentMeta = buildEnrollmentMetaFromMap(currentEnrollments);
         localStorage.setItem('enrollmentMeta', JSON.stringify(defaultEnrollmentMeta));
         return defaultEnrollmentMeta;
     });
+
+    useEffect(() => {
+        const loadEnrollmentsFromBackend = async () => {
+            const endpoints = ['/student-courses/all', '/student-courses', '/student-courses/list'];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetchApi(endpoint);
+                    const enrollmentRecords = extractEnrollmentsFromResponse(response)
+                        .map(toEnrollmentRecord)
+                        .filter(Boolean);
+
+                    if (enrollmentRecords.length === 0) {
+                        continue;
+                    }
+
+                    const nextEnrollmentState = buildEnrollmentStateFromRecords(enrollmentRecords);
+                    setEnrolledMap(nextEnrollmentState.enrolledMap);
+                    setEnrollmentMetaMap(nextEnrollmentState.enrollmentMetaMap);
+                    localStorage.setItem('enrollments', JSON.stringify(nextEnrollmentState.enrolledMap));
+                    localStorage.setItem('enrollmentMeta', JSON.stringify(nextEnrollmentState.enrollmentMetaMap));
+                    return;
+                } catch {
+                    // Try the next endpoint candidate.
+                }
+            }
+        };
+
+        loadEnrollmentsFromBackend();
+    }, []);
 
     const [progressMap, setProgressMap] = useState(() => {
         const storedProgress = localStorage.getItem('courseProgress');
@@ -651,13 +810,11 @@ export const CourseProvider = ({ children }) => {
     const getCourseProgress = (userId, courseId, totalModules) => {
         const safeTotalModules = totalModules || 0;
         if (safeTotalModules === 0) {
-            return getAssignmentScore(userId, courseId) || 0;
+            return 0;
         }
 
-        const modulesProgress = (getCompletedModules(userId, courseId).length / safeTotalModules) * 75;
-        const assignmentProgress = getAssignmentScore(userId, courseId) || 0;
-
-        return Math.min(100, Math.round(modulesProgress + assignmentProgress));
+        const completedModules = getCompletedModules(userId, courseId).length;
+        return Math.min(100, Math.round((completedModules / safeTotalModules) * 100));
     };
 
     const hasCompletedCourseComponents = (userId, courseId, totalModules) => {
@@ -673,11 +830,13 @@ export const CourseProvider = ({ children }) => {
 
     const getEnrolledCourses = (userId) => {
         const ids = enrolledMap[userId] || [];
-        return courses.filter(c => ids.includes(c.id));
+        return courses.filter((course) => ids.some((enrolledId) => courseIdsMatch(enrolledId, course.id)));
     };
 
     const getCourseStudents = (courseId) => {
-        return Object.keys(enrolledMap).filter(userId => enrolledMap[userId].includes(courseId));
+        return Object.keys(enrolledMap).filter((userId) =>
+            (enrolledMap[userId] || []).some((enrolledCourseId) => courseIdsMatch(enrolledCourseId, courseId))
+        );
     };
 
     const getEnrollmentDate = (userId, courseId) => {

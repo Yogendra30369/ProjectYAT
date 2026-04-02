@@ -71,9 +71,7 @@ export const EducatorDashboard = () => {
                         <div style={{ fontSize: '0.9rem', color: 'var(--gray-600)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <Users size={16} /> 
                             <span>
-                                {course.registeredStudents !== undefined 
-                                    ? course.registeredStudents 
-                                    : getCourseStudents(course.id).length} Students Registered
+                                {getCourseStudents(course.id).length} Students Registered
                             </span>
                         </div>
 

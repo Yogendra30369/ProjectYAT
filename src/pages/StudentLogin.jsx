@@ -52,7 +52,7 @@ export const StudentLogin = () => {
                         <Input
                             id="email"
                             type="email"
-                            placeholder="student@course.com"
+                            placeholder="you@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -92,24 +92,6 @@ export const StudentLogin = () => {
                         {loading ? 'Signing in...' : 'Sign In'}
                     </Button>
                 </form>
-
-                {/* Sample Credentials */}
-                <div style={{ 
-                    marginTop: '1rem',
-                    padding: '1rem', 
-                    background: 'var(--primary-50)', 
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--primary-200)'
-                }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-900)', marginBottom: '0.5rem' }}>
-                        📋 Sample Credentials
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--primary-700)' }}>
-                        <div><strong>Email:</strong> student@course.com</div>
-                        <div><strong>Password:</strong> student123</div>
-                    </div>
-                </div>
-
                 <div style={{ textAlign: 'center', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
                         Don't have an account?{' '}
@@ -120,6 +102,21 @@ export const StudentLogin = () => {
                     <Link to="/login" style={{ color: 'var(--primary-600)', textDecoration: 'none', fontSize: '0.875rem' }}>
                         ← Back to login selection
                     </Link>
+                        <div style={{ 
+                            marginTop: '1rem',
+                            padding: '1rem', 
+                            background: 'var(--primary-50)', 
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--primary-200)'
+                        }}>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-900)', marginBottom: '0.5rem' }}>
+                                Sample Credentials
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--primary-700)' }}>
+                                <div><strong>Email:</strong> student@course.com</div>
+                                <div><strong>Password:</strong> student123</div>
+                            </div>
+                        </div>
                 </div>
             </Card>
         </div>

@@ -79,44 +79,4 @@ export const MOCK_COURSES = [
     }
 ];
 
-// Mock user database with passwords
-export const MOCK_USERS_DB = [
-    {
-        id: 'u1',
-        name: 'Jane Educator',
-        role: 'educator',
-        email: 'educator@course.com',
-        password: 'educator123'
-    },
-    {
-        id: 'u2',
-        name: 'Alex Student',
-        role: 'student',
-        email: 'student@course.com',
-        password: 'student123',
-        enrolledCourses: ['c1', 'c2', 'c3']
-    }
-];
-
-export const MOCK_USERS = {
-    educator: {
-        id: 'u1',
-        name: 'Jane Educator',
-        role: 'educator',
-        email: 'educator@course.com'
-    },
-    student: {
-        id: 'u2',
-        name: 'Alex Student',
-        role: 'student',
-        email: 'student@course.com',
-        enrolledCourses: ['c1', 'c2', 'c3']
-    }
-};
-
-export const ALL_USERS = MOCK_USERS_DB.map(user => {
-    const userWithoutPassword = { ...user };
-    delete userWithoutPassword.password;
-    return userWithoutPassword;
-});
 
