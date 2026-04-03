@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { CheckCircle, FileText, Upload } from 'lucide-react';
 import { toEmbeddableYouTubeUrl } from '../utils/videoUrl';
+import { API_BASE_URL } from '../utils/api';
 
 const getModuleVideoMode = (module) => {
     if (!module?.videoUrl) {
@@ -25,11 +26,19 @@ const getPlayableVideoUrl = (module) => {
         return '';
     }
 
+    const videoUrl = module.videoUrl;
+
     if (getModuleVideoMode(module) === 'upload') {
-        return module.videoUrl;
+        // If it's a relative path from the backend (e.g. /api/videos/stream/...)
+        if (typeof videoUrl === 'string' && videoUrl.startsWith('/api/videos/stream/')) {
+            // Prepend the base URL (http://localhost:8080)
+            const baseUrl = API_BASE_URL.replace('/api', '');
+            return `${baseUrl}${videoUrl}`;
+        }
+        return videoUrl; // Could be a Base64 string for legacy modules
     }
 
-    return toEmbeddableYouTubeUrl(module.videoUrl);
+    return toEmbeddableYouTubeUrl(videoUrl);
 };
 
 export const CourseDetails = () => {
@@ -48,13 +57,21 @@ export const CourseDetails = () => {
         || course?.assignmentQuestionFileName
         || course?.assignmentFile?.name
         || '';
-    const assignmentQuestionFileDataUrl =
-        course?.assignmentFileDataUrl
-        || course?.assignmentQuestionFileDataUrl
-        || course?.assignmentDataUrl
-        || course?.assignmentFile?.dataUrl
-        || course?.assignmentFile?.url
-        || '';
+
+    const getAssignmentDownloadUrl = () => {
+        if (!assignmentQuestionFileName) return '';
+        
+        // If it's already a DataURL or full URL, return as is
+        if (assignmentQuestionFileName.startsWith('data:') || assignmentQuestionFileName.startsWith('http')) {
+            return assignmentQuestionFileName;
+        }
+
+        // Construct backend download URL: /api/assignments/download/{courseId}/{fileName}
+        const baseUrl = API_BASE_URL; // http://localhost:8080/api
+        return `${baseUrl}/assignments/download/${courseId}/${assignmentQuestionFileName}`;
+    };
+
+    const assignmentQuestionFileDataUrl = getAssignmentDownloadUrl();
 
     const modules = course?.modules || [];
     const currentModule = modules[activeModule];
@@ -211,12 +228,18 @@ export const CourseDetails = () => {
                         <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <FileText size={20} /> Assignment Submission
                         </h3>
-                        {course.assignmentFileDataUrl && course.assignmentFileName && (
+                        {assignmentQuestionFileDataUrl && assignmentQuestionFileName && (
                             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                <a href={course.assignmentFileDataUrl} download={course.assignmentFileName} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--primary-800)', fontWeight: 600 }}>
+                                <a 
+                                    href={assignmentQuestionFileDataUrl} 
+                                    download={assignmentQuestionFileName} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--primary-800)', fontWeight: 600 }}
+                                >
                                     <FileText size={16} /> Download Assignment Questions
                                 </a>
-                                <span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>{course.assignmentFileName}</span>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>{assignmentQuestionFileName}</span>
                             </div>
                         )}
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>

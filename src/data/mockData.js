@@ -2,7 +2,6 @@ export const MOCK_COURSES = [
     {
         id: 'c1',
         title: 'React Frontend Essentials',
-        description: 'Build modern UIs with React, JSX, state, and reusable components.',
         instructor: 'Jane Doe',
         modules: [
             { 
@@ -28,7 +27,6 @@ export const MOCK_COURSES = [
     {
         id: 'c2',
         title: 'Modern JavaScript for Web Apps',
-        description: 'Master JavaScript fundamentals, async programming, and DOM workflows.',
         instructor: 'John Smith',
         modules: [
             { 
@@ -54,7 +52,6 @@ export const MOCK_COURSES = [
     {
         id: 'c3',
         title: 'Node.js & Express Full-Stack APIs',
-        description: 'Create backend APIs, connect databases, and power full-stack applications.',
         instructor: 'Jane Doe',
         modules: [
             { 

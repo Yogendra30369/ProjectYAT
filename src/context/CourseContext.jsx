@@ -156,13 +156,18 @@ const toPersistableModules = (modules) => {
             };
         }
 
+        const isUpload = module?.videoSource === 'upload';
+        const videoUrl = module?.videoUrl;
+
         return {
             id: module?.id || `m${index + 1}`,
             title: module?.title || '',
             content: module?.content || '',
-            videoSource: module?.videoSource || (module?.videoUrl && module.videoUrl.startsWith('data:video') ? 'upload' : 'youtube'),
-            videoUrl: module?.videoUrl || '',
-            uploadedVideoName: module?.uploadedVideoName || ''
+            videoSource: module?.videoSource || (typeof videoUrl === 'string' && videoUrl.startsWith('data:video') ? 'upload' : 'youtube'),
+            // If it's a File object (not yet uploaded), we keep it as empty or keep reference if needed
+            // But for the database, we only want the path.
+            videoUrl: typeof videoUrl === 'string' ? videoUrl : '', 
+            uploadedVideoName: module?.uploadedVideoName || (videoUrl instanceof File ? videoUrl.name : '')
         };
     });
 };
@@ -303,7 +308,10 @@ const buildEnrollmentStateFromRecords = (records) => {
     };
 };
 
+import { useAuth } from './AuthContext';
+
 export const CourseProvider = ({ children }) => {
+    const { user } = useAuth();
     const [courses, setCourses] = useState(() => {
         const storedCourses = localStorage.getItem('courses');
         const storedCourseSeedVersion = localStorage.getItem('coursesSeedVersion');
@@ -357,7 +365,6 @@ export const CourseProvider = ({ children }) => {
                             method: 'POST',
                             body: JSON.stringify({
                                 title: c.title || '',
-                                description: c.description || '',
                                 modules: JSON.stringify(toPersistableModules(c.modules || [])),
                                 registeredStudents: c.registeredStudents || 0,
                                 assignmentFileName: c.assignmentFileName || '',
@@ -422,6 +429,10 @@ export const CourseProvider = ({ children }) => {
     useEffect(() => {
         const loadEnrollmentsFromBackend = async () => {
             const endpoints = ['/student-courses/all', '/student-courses', '/student-courses/list'];
+            
+            // If we have a logged in user, we might want to prioritize their own enrollments
+            // but the current structure suggests a global map is used for educators too.
+            // So we try /all first.
 
             for (const endpoint of endpoints) {
                 try {
@@ -430,7 +441,7 @@ export const CourseProvider = ({ children }) => {
                         .map(toEnrollmentRecord)
                         .filter(Boolean);
 
-                    if (enrollmentRecords.length === 0) {
+                    if (enrollmentRecords.length === 0 && endpoint !== '/student-courses/all') {
                         continue;
                     }
 
@@ -440,14 +451,37 @@ export const CourseProvider = ({ children }) => {
                     localStorage.setItem('enrollments', JSON.stringify(nextEnrollmentState.enrolledMap));
                     localStorage.setItem('enrollmentMeta', JSON.stringify(nextEnrollmentState.enrollmentMetaMap));
                     return;
-                } catch {
-                    // Try the next endpoint candidate.
+                } catch (err) {
+                    console.warn(`Failed to fetch enrollments from ${endpoint}:`, err.message);
+                }
+            }
+
+            // Fallback: If global fetch failed but we have a user, try to fetch just theirs
+            if (user?.id) {
+                try {
+                    const numericUserId = extractNumericId(user.id);
+                    if (numericUserId) {
+                        const response = await fetchApi(`/student-courses/student/${numericUserId}`);
+                        const enrollmentRecords = extractEnrollmentsFromResponse(response)
+                            .map(toEnrollmentRecord)
+                            .filter(Boolean);
+                        
+                        if (enrollmentRecords.length > 0) {
+                            const nextEnrollmentState = buildEnrollmentStateFromRecords(enrollmentRecords);
+                            
+                            setEnrolledMap(prev => ({ ...prev, ...nextEnrollmentState.enrolledMap }));
+                            setEnrollmentMetaMap(prev => ({ ...prev, ...nextEnrollmentState.enrollmentMetaMap }));
+                            // We don't overwrite everything in localStorage here, just merge if needed
+                        }
+                    }
+                } catch (userErr) {
+                    console.error("Failed to fetch user-specific enrollments:", userErr);
                 }
             }
         };
 
         loadEnrollmentsFromBackend();
-    }, []);
+    }, [user?.id]);
 
     const [progressMap, setProgressMap] = useState(() => {
         const storedProgress = localStorage.getItem('courseProgress');
@@ -492,26 +526,89 @@ export const CourseProvider = ({ children }) => {
 
     const addCourse = async (newCourse) => {
         try {
-            const payload = {
+            // 1. First, create the course metadata skeleton to get an ID
+            const initialPayload = {
                 title: newCourse.title || '',
-                description: newCourse.description || '',
-                modules: JSON.stringify(toPersistableModules(newCourse.modules || [])),
+                modules: JSON.stringify([]), // empty modules initially
                 registeredStudents: 0,
                 assignmentFileName: newCourse.assignmentFileName || '',
                 assignmentFileType: newCourse.assignmentFileType || ''
-                // assignmentFileDataUrl intentionally omitted — kept in localStorage only
             };
 
             const apiCourse = await fetchApi('/courses/create', {
                 method: 'POST',
-                body: JSON.stringify(payload)
+                body: JSON.stringify(initialPayload)
             });
 
-            // Parse modules back from JSON string
+            const courseId = apiCourse.id;
+
+            // 2. Upload any module videos
+            const processedModules = await Promise.all((newCourse.modules || []).map(async (module) => {
+                const videoFile = module.videoUrl; // In the new UI, this will be a File object
+                
+                if (module.videoSource === 'upload' && videoFile instanceof File) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', videoFile);
+                        
+                        const uploadResp = await fetchApi(`/videos/upload/${courseId}`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        return {
+                            ...module,
+                            videoUrl: uploadResp.videoUrl, // The returned /api/videos/stream/... path
+                            uploadedVideoName: videoFile.name
+                        };
+                    } catch (uploadError) {
+                        console.error("Failed to upload video for module:", module.title, uploadError);
+                        return { ...module, videoUrl: '' }; // Fallback
+                    }
+                }
+                return module;
+            }));
+
+            // 3. Upload assignment question file if present
+            const assignmentFile = newCourse.assignmentFileDataUrl;
+            let currentAssignmentFileName = newCourse.assignmentFileName || initialPayload.assignmentFileName;
+            
+            if (assignmentFile instanceof File) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', assignmentFile);
+                    const uploadResp = await fetchApi(`/assignments/upload/${courseId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    // Use the UUID-based filename returned by the backend
+                    if (uploadResp && uploadResp.fileName) {
+                        currentAssignmentFileName = uploadResp.fileName;
+                    }
+                } catch (uploadError) {
+                    console.error("Failed to upload assignment file:", uploadError);
+                }
+            }
+
+            // 4. Final update with full modules and correct filenames/URLs
+            const finalPayload = {
+                title: initialPayload.title,
+                modules: JSON.stringify(toPersistableModules(processedModules)),
+                registeredStudents: initialPayload.registeredStudents,
+                assignmentFileName: currentAssignmentFileName,
+                assignmentFileType: newCourse.assignmentFileType || initialPayload.assignmentFileType
+            };
+
+            const finalApiCourse = await fetchApi(`/courses/update/${courseId}`, {
+                method: 'PUT',
+                body: JSON.stringify(finalPayload)
+            });
+
             const parsedCourse = {
-                ...apiCourse,
-                modules: apiCourse.modules ? JSON.parse(apiCourse.modules) : [],
-                id: String(apiCourse.id)
+                ...finalApiCourse,
+                modules: finalApiCourse.modules ? JSON.parse(finalApiCourse.modules) : [],
+                id: String(finalApiCourse.id)
             };
 
             const normalizedNewCourse = normalizeCourse(parsedCourse);
@@ -522,35 +619,98 @@ export const CourseProvider = ({ children }) => {
             return normalizedNewCourse;
         } catch (error) {
             console.error("Failed to create course via API:", error);
-            // Local fallback
             const normalizedNewCourse = normalizeCourse({ ...newCourse, id: Date.now().toString() });
             const updatedCourses = [...courses, normalizedNewCourse];
             setCourses(updatedCourses);
             localStorage.setItem('courses', JSON.stringify(updatedCourses));
-            
             return normalizedNewCourse;
         }
     };
 
-    const updateCourse = (updatedCourse) => {
-        const normalizedUpdatedCourse = normalizeCourse(updatedCourse);
-        const updatedCourses = courses.map(c => c.id === normalizedUpdatedCourse.id ? normalizedUpdatedCourse : c);
-        setCourses(updatedCourses);
-        localStorage.setItem('courses', JSON.stringify(updatedCourses));
-        
-        // Optionally sync to backend
-        fetchApi(`/courses/update/${normalizedUpdatedCourse.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-                title: normalizedUpdatedCourse.title,
-                description: normalizedUpdatedCourse.description,
-                modules: JSON.stringify(toPersistableModules(normalizedUpdatedCourse.modules || [])),
-                registeredStudents: normalizedUpdatedCourse.registeredStudents || 0,
-                assignmentFileName: normalizedUpdatedCourse.assignmentFileName || '',
-                assignmentFileType: normalizedUpdatedCourse.assignmentFileType || ''
-                // assignmentFileDataUrl intentionally omitted — kept in localStorage only
-            })
-        }).catch(e => console.error("Failed to update course:", e));
+    const updateCourse = async (updatedCourse) => {
+        try {
+            const courseId = updatedCourse.id;
+
+            // 1. Upload any new module videos
+            const processedModules = await Promise.all((updatedCourse.modules || []).map(async (module) => {
+                const videoFile = module.videoUrl;
+                
+                if (module.videoSource === 'upload' && videoFile instanceof File) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', videoFile);
+                        
+                        const uploadResp = await fetchApi(`/videos/upload/${courseId}`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        return {
+                            ...module,
+                            videoUrl: uploadResp.videoUrl,
+                            uploadedVideoName: videoFile.name
+                        };
+                    } catch (uploadError) {
+                        console.error("Failed to upload video for module:", module.title, uploadError);
+                        return module; 
+                    }
+                }
+                return module;
+            }));
+
+            // 2. Upload assignment question file if new
+            const assignmentFile = updatedCourse.assignmentFileDataUrl;
+            let currentAssignmentFileName = updatedCourse.assignmentFileName || '';
+
+            if (assignmentFile instanceof File) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', assignmentFile);
+                    const uploadResp = await fetchApi(`/assignments/upload/${courseId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (uploadResp && uploadResp.fileName) {
+                        currentAssignmentFileName = uploadResp.fileName;
+                    }
+                } catch (uploadError) {
+                    console.error("Failed to upload assignment file during update:", uploadError);
+                }
+            }
+
+            const payload = {
+                title: updatedCourse.title,
+                modules: JSON.stringify(toPersistableModules(processedModules)),
+                registeredStudents: updatedCourse.registeredStudents || 0,
+                assignmentFileName: currentAssignmentFileName,
+                assignmentFileType: updatedCourse.assignmentFileType || ''
+            };
+
+            const apiCourse = await fetchApi(`/courses/update/${courseId}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+
+            const parsedCourse = {
+                ...apiCourse,
+                modules: apiCourse.modules ? JSON.parse(apiCourse.modules) : [],
+                id: String(apiCourse.id)
+            };
+
+            const normalizedUpdatedCourse = normalizeCourse(parsedCourse);
+            const updatedCourses = courses.map(c => c.id === normalizedUpdatedCourse.id ? normalizedUpdatedCourse : c);
+            setCourses(updatedCourses);
+            localStorage.setItem('courses', JSON.stringify(updatedCourses));
+
+        } catch (error) {
+            console.error("Failed to update course:", error);
+            // Fallback for local update
+            const normalizedUpdatedCourse = normalizeCourse(updatedCourse);
+            const updatedCourses = courses.map(c => c.id === normalizedUpdatedCourse.id ? normalizedUpdatedCourse : c);
+            setCourses(updatedCourses);
+            localStorage.setItem('courses', JSON.stringify(updatedCourses));
+        }
     };
 
     const deleteCourse = (courseId) => {
@@ -638,8 +798,31 @@ export const CourseProvider = ({ children }) => {
                 });
             } catch (error) {
                 console.error('Failed to save enrollment to database:', error);
-                // On failure, don't update local state so they can try again.
-                // Could toast an error here.
+                
+                // If the error is "already enrolled", we should sync the state instead of failing
+                const errorMessage = error?.message || String(error);
+                if (errorMessage.toLowerCase().includes('already enrolled')) {
+                    // Force a re-fetch of enrollments to sync state
+                    const numericStudentId = extractNumericId(userId);
+                    if (numericStudentId) {
+                        try {
+                            const response = await fetchApi(`/student-courses/student/${numericStudentId}`);
+                            const enrollmentRecords = extractEnrollmentsFromResponse(response)
+                                .map(toEnrollmentRecord)
+                                .filter(Boolean);
+                            
+                            if (enrollmentRecords.length > 0) {
+                                const nextEnrollmentState = buildEnrollmentStateFromRecords(enrollmentRecords);
+                                setEnrolledMap(prev => ({ ...prev, ...nextEnrollmentState.enrolledMap }));
+                                setEnrollmentMetaMap(prev => ({ ...prev, ...nextEnrollmentState.enrollmentMetaMap }));
+                                return; // Success via sync
+                            }
+                        } catch (syncError) {
+                            console.error("Failed to sync enrollment after conflict:", syncError);
+                        }
+                    }
+                }
+                
                 throw error;
             }
         }

@@ -26,7 +26,6 @@ const toEditableCourse = (course) => {
     return {
         id: course.id,
         title: course.title,
-        description: course.description,
         modules: course.modules && course.modules.length > 0
             ? course.modules.map(module => ({
                 ...module,
@@ -79,7 +78,7 @@ export const EditCourse = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!formData.title || !formData.description) return; // Simple validation
+        if (!formData.title) return; // Simple validation
 
         const normalizedCourse = {
             ...formData,
@@ -104,21 +103,17 @@ export const EditCourse = () => {
             return;
         }
 
-        if (file.size > 6 * 1024 * 1024) {
-            alert('Please upload a file smaller than 6MB for this demo.');
+        if (file.size > 20 * 1024 * 1024) {
+            alert('Please upload a file smaller than 20MB.');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setFormData((currentFormData) => ({
-                ...currentFormData,
-                assignmentFileName: file.name,
-                assignmentFileType: file.type,
-                assignmentFileDataUrl: reader.result
-            }));
-        };
-        reader.readAsDataURL(file);
+        setFormData((currentFormData) => ({
+            ...currentFormData,
+            assignmentFileName: file.name,
+            assignmentFileType: file.type,
+            assignmentFileDataUrl: file // Store the File object directly
+        }));
     };
 
     const handleVideoUpload = (moduleId, file) => {
@@ -129,28 +124,24 @@ export const EditCourse = () => {
             return;
         }
 
-        if (file.size > 4 * 1024 * 1024) {
-            alert('Please upload a video smaller than 4MB for this demo.');
+        if (file.size > 50 * 1024 * 1024) {
+            alert('Please upload a video smaller than 50MB.');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setFormData((currentFormData) => ({
-                ...currentFormData,
-                modules: currentFormData.modules.map((module) =>
-                    module.id === moduleId
-                        ? {
-                            ...module,
-                            videoUrl: reader.result,
-                            uploadedVideoName: file.name,
-                            videoSource: 'upload'
-                        }
-                        : module
-                )
-            }));
-        };
-        reader.readAsDataURL(file);
+        setFormData((currentFormData) => ({
+            ...currentFormData,
+            modules: currentFormData.modules.map((module) =>
+                module.id === moduleId
+                    ? {
+                        ...module,
+                        videoUrl: file, // Store the File object directly
+                        uploadedVideoName: file.name,
+                        videoSource: 'upload'
+                    }
+                    : module
+            )
+        }));
     };
 
     if (!course || !formData) return <div className="container" style={{ marginTop: '2rem' }}>Course not found.</div>;
@@ -166,13 +157,6 @@ export const EditCourse = () => {
                         value={formData.title}
                         onChange={handleChange}
                         placeholder="e.g. Advanced React Patterns"
-                    />
-                    <Input
-                        label="Description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        placeholder="Short summary of the course..."
                     />
 
                     <div>

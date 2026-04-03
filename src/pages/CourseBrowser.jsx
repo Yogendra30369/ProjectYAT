@@ -37,7 +37,6 @@ export const CourseBrowser = () => {
                                 <h3>{course.title}</h3>
                                 {isEnrolled && <span className={styles.badge} style={{ color: 'var(--success)', background: 'var(--gray-50)' }}><CheckCircle size={14} /> Enrolled</span>}
                             </div>
-                            <p className={styles.courseDesc}>{course.description}</p>
                             <div style={{ marginTop: 'auto', borderTop: '1px solid var(--gray-100)', paddingTop: '1rem' }}>
                                 {isEnrolled ? (
                                     <Link to={`/courses/${course.id}`}>

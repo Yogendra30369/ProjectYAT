@@ -99,7 +99,6 @@ export const StudentDashboard = () => {
                                     <div className={styles.courseHeader}>
                                         <h3>{course.title}</h3>
                                     </div>
-                                    <p className={styles.courseDesc}>{course.description}</p>
                                     <div className={styles.courseBody}>
                                         <div className={styles.progressHeader}>
                                             <span>Progress</span>

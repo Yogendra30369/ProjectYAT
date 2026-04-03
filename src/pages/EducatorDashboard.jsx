@@ -66,7 +66,6 @@ export const EducatorDashboard = () => {
                             <h3>{course.title}</h3>
                             <span className={styles.badge}>{course.modules?.length || 0} Modules</span>
                         </div>
-                        <p className={styles.courseDesc}>{course.description}</p>
                         
                         <div style={{ fontSize: '0.9rem', color: 'var(--gray-600)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <Users size={16} /> 
