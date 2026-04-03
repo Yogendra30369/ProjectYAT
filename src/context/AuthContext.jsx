@@ -312,7 +312,7 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('user', JSON.stringify(foundUser));
                 return { success: true, user: foundUser };
             } else {
-                return { success: false, error: data };
+                return { success: false, error: getLoginMessageText(data) || 'Invalid credentials' };
             }
         } catch (error) {
             console.error("Login API Error:", error);

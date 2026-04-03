@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { ArrowLeft, User } from 'lucide-react';
-import { fetchApi } from '../utils/api';
+import { API_BASE_URL, fetchApi } from '../utils/api';
 
 export const CourseStudents = () => {
     const { courseId } = useParams();
@@ -104,39 +104,26 @@ export const CourseStudents = () => {
         navigate('/educator', { replace: true });
     };
 
-    const handleOpenSubmission = (assignmentInfo) => {
-        if (!assignmentInfo?.assignmentFileDataUrl) {
-            alert('Submission file is unavailable for preview. Ask the student to resubmit.');
+    const handleOpenSubmission = (record) => {
+        const submissionPath = record?.submissionFilePath;
+        if (!submissionPath || !record?.studentId) {
+            alert('Submission file is unavailable. Ask the student to resubmit.');
             return;
         }
 
         try {
-            const [metaPart, dataPart] = assignmentInfo.assignmentFileDataUrl.split(',');
-            if (!metaPart || dataPart === undefined) {
-                throw new Error('Invalid submission data');
+            const fileName = submissionPath.split('/').filter(Boolean).pop();
+            if (!fileName) {
+                throw new Error('Invalid submission path');
             }
 
-            const mimeMatch = metaPart.match(/data:(.*?);base64/);
-            const mimeType = mimeMatch?.[1] || assignmentInfo.assignmentFileType || 'application/octet-stream';
-
-            const binaryString = window.atob(dataPart);
-            const buffer = new Uint8Array(binaryString.length);
-
-            for (let index = 0; index < binaryString.length; index += 1) {
-                buffer[index] = binaryString.charCodeAt(index);
-            }
-
-            const blob = new Blob([buffer], { type: mimeType });
-            const objectUrl = URL.createObjectURL(blob);
-
-            const openedWindow = window.open(objectUrl, '_blank');
+            const downloadUrl = `${API_BASE_URL}/assignments/submission/${courseId}/${record.studentId}/${encodeURIComponent(fileName)}`;
+            const openedWindow = window.open(downloadUrl, '_blank');
             if (!openedWindow) {
                 alert('Unable to open the file. Please allow pop-ups and try again.');
             } else {
                 openedWindow.opener = null;
             }
-
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
         } catch {
             alert('Unable to open the submitted file. Ask the student to resubmit and try again.');
         }
@@ -188,8 +175,11 @@ export const CourseStudents = () => {
                             <tbody>
                                 {enrolledStudents.map((student) => {
                                     const assignmentInfo = getAssignmentDetails(student.id, courseId);
-                                    const hasSubmission = assignmentInfo.assignmentSubmitted;
                                     const record = studentRecords.find(r => String(r.studentId) === String(student.id)) || {};
+                                    const hasSubmission = Boolean(record.submissionFilePath);
+                                    const submissionFileName = record.submissionFilePath
+                                        ? record.submissionFilePath.split('/').filter(Boolean).pop()
+                                        : '';
                                     
                                     return (
                                         <tr key={student.id} style={{ borderBottom: '1px solid var(--gray-200)' }}>
@@ -224,13 +214,15 @@ export const CourseStudents = () => {
                                                 {hasSubmission ? (
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                         <span style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
-                                                            {assignmentInfo.assignmentFileName || 'Submitted File'}
+                                                            {submissionFileName || 'Submitted File'}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                                                            {record.submissionFilePath}
                                                         </span>
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            onClick={() => handleOpenSubmission(assignmentInfo)}
-                                                            disabled={!assignmentInfo.assignmentFileDataUrl}
+                                                            onClick={() => handleOpenSubmission(record)}
                                                             style={{ width: 'fit-content' }}
                                                         >
                                                             Open

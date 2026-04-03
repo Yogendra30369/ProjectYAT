@@ -129,6 +129,16 @@ const courseIdsMatch = (leftCourseId, rightCourseId) => {
     return leftKey !== '' && leftKey === rightKey;
 };
 
+const extractNumericId = (value) => {
+    const key = getNormalizedCourseKey(value);
+    if (!key) {
+        return null;
+    }
+
+    const parsed = Number(key);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
 const toPersistableModules = (modules) => {
     if (!Array.isArray(modules)) {
         return [];
@@ -761,19 +771,41 @@ export const CourseProvider = ({ children }) => {
         localStorage.setItem('courseProgress', JSON.stringify(updatedProgressMap));
     };
 
-    const submitAssignment = (userId, courseId, submissionFile) => {
+    const submitAssignment = async (userId, courseId, submissionFile) => {
+        if (!(submissionFile instanceof File)) {
+            throw new Error('Please select a file before submitting.');
+        }
+
+        const numericUserId = extractNumericId(userId);
+        const numericCourseId = extractNumericId(courseId);
+
+        if (!numericUserId || !numericCourseId) {
+            throw new Error('Invalid user or course id for assignment submission.');
+        }
+
+        const formData = new FormData();
+        formData.append('file', submissionFile);
+
+        let response;
+        try {
+            response = await fetchApi(`/assignments/submit/${numericCourseId}/${numericUserId}`, {
+                method: 'POST',
+                body: formData
+            });
+        } catch (error) {
+            const isNetworkFailure = error instanceof TypeError && String(error.message || '').toLowerCase().includes('fetch');
+            if (isNetworkFailure) {
+                throw new Error('Unable to reach the backend while submitting the assignment. Make sure the backend server is running.');
+            }
+            throw error;
+        }
+
         const userProgress = progressMap[userId] || {};
         const normalizedCourseProgress = normalizeCourseProgress(userProgress[courseId]);
 
-        const submittedFileName = typeof submissionFile === 'string'
-            ? submissionFile
-            : submissionFile?.name || normalizedCourseProgress.assignmentFileName;
-        const submittedFileType = typeof submissionFile === 'string'
-            ? normalizedCourseProgress.assignmentFileType
-            : submissionFile?.type || normalizedCourseProgress.assignmentFileType;
-        const submittedFileDataUrl = typeof submissionFile === 'string'
-            ? normalizedCourseProgress.assignmentFileDataUrl
-            : submissionFile?.dataUrl || normalizedCourseProgress.assignmentFileDataUrl;
+        const submittedFileName = response?.fileName || submissionFile.name || normalizedCourseProgress.assignmentFileName;
+        const submittedFileType = submissionFile.type || normalizedCourseProgress.assignmentFileType;
+        const submittedFilePath = response?.filePath || normalizedCourseProgress.assignmentFilePath || '';
 
         const updatedProgressMap = {
             ...progressMap,
@@ -784,7 +816,7 @@ export const CourseProvider = ({ children }) => {
                     assignmentSubmitted: true,
                     assignmentFileName: submittedFileName,
                     assignmentFileType: submittedFileType,
-                    assignmentFileDataUrl: submittedFileDataUrl,
+                    assignmentFilePath: submittedFilePath,
                     assignmentScore: null
                 }
             }
@@ -792,6 +824,8 @@ export const CourseProvider = ({ children }) => {
 
         setProgressMap(updatedProgressMap);
         localStorage.setItem('courseProgress', JSON.stringify(updatedProgressMap));
+
+        return response;
     };
 
     const gradeAssignment = (studentId, courseId, score) => {

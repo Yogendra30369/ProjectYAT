@@ -2,12 +2,15 @@ export const API_BASE_URL = 'http://localhost:8080/api';
 
 export const fetchApi = async (endpoint, options = {}) => {
     try {
+        const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
+        const mergedHeaders = {
+            ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
+            ...(options.headers || {}),
+        };
+
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
+            headers: mergedHeaders,
         });
 
         const isJson = response.headers.get('content-type')?.includes('application/json');

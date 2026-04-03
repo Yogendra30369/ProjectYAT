@@ -41,6 +41,7 @@ export const CourseDetails = () => {
     const [activeModule, setActiveModule] = useState(0);
     const [assignmentFile, setAssignmentFile] = useState(null);
     const [submitted, setSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const assignmentQuestionFileName =
         course?.assignmentFileName
@@ -87,26 +88,23 @@ export const CourseDetails = () => {
         setAssignmentFile(e.target.files[0]);
     };
 
-    const handleAssignmentSubmit = () => {
+    const handleAssignmentSubmit = async () => {
         if (!assignmentFile) {
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            submitCourseAssignment(userId, courseId, {
-                name: assignmentFile.name,
-                type: assignmentFile.type,
-                dataUrl: reader.result
-            });
+        try {
+            setIsSubmitting(true);
+            await submitCourseAssignment(userId, courseId, assignmentFile);
             setSubmitted(true);
+            setAssignmentFile(null);
             setTimeout(() => setSubmitted(false), 3000);
             alert(`Assignment submitted: ${assignmentFile.name}`);
-        };
-        reader.onerror = () => {
-            alert('Unable to read the selected file. Please try again.');
-        };
-        reader.readAsDataURL(assignmentFile);
+        } catch (error) {
+            alert(error?.message || 'Unable to submit assignment. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -225,7 +223,7 @@ export const CourseDetails = () => {
                             <div style={{ flex: 1 }}>
                                 <Input type="file" onChange={handleFileChange} />
                             </div>
-                            <Button onClick={handleAssignmentSubmit} disabled={!assignmentFile}>
+                            <Button onClick={handleAssignmentSubmit} disabled={!assignmentFile || isSubmitting}>
                                 <Upload size={18} /> Submit
                             </Button>
                         </div>
