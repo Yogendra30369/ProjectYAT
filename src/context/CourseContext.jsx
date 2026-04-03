@@ -316,17 +316,31 @@ export const CourseProvider = ({ children }) => {
             try {
                 const apiCourses = await fetchApi('/courses/all');
                 if (Array.isArray(apiCourses) && apiCourses.length > 0) {
-                    // Parse modules from JSON strings if they exist
+                    // Recover locally-stored assignment file data URLs by course ID
+                    // (base64 file data is NOT stored in the backend for performance reasons)
+                    const localCoursesBefore = parseJsonOrFallback(localStorage.getItem('courses'), []);
+                    const localAssignmentMap = {};
+                    localCoursesBefore.forEach(lc => {
+                        if (lc.id && lc.assignmentFileDataUrl) {
+                            localAssignmentMap[String(lc.id)] = lc.assignmentFileDataUrl;
+                        }
+                    });
+
                     const normalizedApiCourses = apiCourses.map(c => {
                         const modules = parseModulesFromApi(c.modules);
-                        return normalizeCourse({ ...c, id: String(c.id), modules });
+                        return normalizeCourse({
+                            ...c,
+                            id: String(c.id),
+                            modules,
+                            // Restore file data URL from localStorage; backend only stores metadata
+                            assignmentFileDataUrl: localAssignmentMap[String(c.id)] || ''
+                        });
                     });
-                    
-                    // Use only API courses - don't mix with mock courses since we have real data
+
                     localStorage.setItem('courses', JSON.stringify(normalizedApiCourses));
                     setCourses(normalizedApiCourses);
                 } else if (Array.isArray(apiCourses) && apiCourses.length === 0) {
-                    // Sync initial mock courses to the newly connected database
+                    // Sync initial courses to newly connected database (metadata only, no file data)
                     const localCourses = parseJsonOrFallback(localStorage.getItem('courses'), MOCK_COURSES);
                     for (const c of localCourses) {
                         await fetchApi('/courses/create', {
@@ -337,17 +351,29 @@ export const CourseProvider = ({ children }) => {
                                 modules: JSON.stringify(toPersistableModules(c.modules || [])),
                                 registeredStudents: c.registeredStudents || 0,
                                 assignmentFileName: c.assignmentFileName || '',
-                                assignmentFileType: c.assignmentFileType || '',
-                                assignmentFileDataUrl: c.assignmentFileDataUrl || ''
+                                assignmentFileType: c.assignmentFileType || ''
+                                // assignmentFileDataUrl intentionally omitted — kept in localStorage only
                             })
                         }).catch(e => console.error(e));
                     }
                     // Reload synced courses
                     const newApiCourses = await fetchApi('/courses/all');
                     if (Array.isArray(newApiCourses) && newApiCourses.length > 0) {
+                        const localCoursesSeed = parseJsonOrFallback(localStorage.getItem('courses'), []);
+                        const localAssignmentMapSeed = {};
+                        localCoursesSeed.forEach(lc => {
+                            if (lc.assignmentFileDataUrl) {
+                                localAssignmentMapSeed[String(lc.id)] = lc.assignmentFileDataUrl;
+                            }
+                        });
                         const normalized = newApiCourses.map(c => {
                             const modules = parseModulesFromApi(c.modules);
-                            return normalizeCourse({ ...c, id: String(c.id), modules });
+                            return normalizeCourse({
+                                ...c,
+                                id: String(c.id),
+                                modules,
+                                assignmentFileDataUrl: localAssignmentMapSeed[String(c.id)] || ''
+                            });
                         });
                         setCourses(normalized);
                         localStorage.setItem('courses', JSON.stringify(normalized));
@@ -462,8 +488,8 @@ export const CourseProvider = ({ children }) => {
                 modules: JSON.stringify(toPersistableModules(newCourse.modules || [])),
                 registeredStudents: 0,
                 assignmentFileName: newCourse.assignmentFileName || '',
-                assignmentFileType: newCourse.assignmentFileType || '',
-                assignmentFileDataUrl: newCourse.assignmentFileDataUrl || ''
+                assignmentFileType: newCourse.assignmentFileType || ''
+                // assignmentFileDataUrl intentionally omitted — kept in localStorage only
             };
 
             const apiCourse = await fetchApi('/courses/create', {
@@ -511,8 +537,8 @@ export const CourseProvider = ({ children }) => {
                 modules: JSON.stringify(toPersistableModules(normalizedUpdatedCourse.modules || [])),
                 registeredStudents: normalizedUpdatedCourse.registeredStudents || 0,
                 assignmentFileName: normalizedUpdatedCourse.assignmentFileName || '',
-                assignmentFileType: normalizedUpdatedCourse.assignmentFileType || '',
-                assignmentFileDataUrl: normalizedUpdatedCourse.assignmentFileDataUrl || ''
+                assignmentFileType: normalizedUpdatedCourse.assignmentFileType || ''
+                // assignmentFileDataUrl intentionally omitted — kept in localStorage only
             })
         }).catch(e => console.error("Failed to update course:", e));
     };
