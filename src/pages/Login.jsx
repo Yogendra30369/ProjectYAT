@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/Card';
 import { BookOpen, GraduationCap, Briefcase } from 'lucide-react';
 import styles from './Login.module.css';
 
 export const Login = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
+
+        navigate(user.role === 'educator' ? '/educator' : '/student', { replace: true });
+    }, [navigate, user]);
 
     return (
         <div className={styles.container}>
