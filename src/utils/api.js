@@ -1,4 +1,5 @@
-export const API_BASE_URL = 'http://localhost:8080/api';
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+export const API_BASE_URL = configuredApiBaseUrl.replace(/\/+$/, '');
 
 // Session/Token management
 const SESSION_KEY_PREFIX = 'yat_session_';
@@ -47,6 +48,7 @@ export const getTokenExpiryIn = () => {
 
 export const fetchApi = async (endpoint, options = {}) => {
     try {
+        const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
         const mergedHeaders = {
             ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
@@ -59,7 +61,7 @@ export const fetchApi = async (endpoint, options = {}) => {
             mergedHeaders['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const response = await fetch(`${API_BASE_URL}${normalizedEndpoint}`, {
             ...options,
             headers: mergedHeaders,
         });
