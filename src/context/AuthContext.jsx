@@ -8,7 +8,7 @@ const parseJsonOrFallback = (value, fallback) => {
     if (!value) {
         return fallback;
     }
-
+    //exception
     try {
         return JSON.parse(value);
     } catch {
@@ -265,7 +265,7 @@ export const AuthProvider = ({ children }) => {
                 const roleFromResponse = extractBackendRole(data);
 
                 const role = normalizeRole(roleFromResponse, email);
-                
+
                 let foundUser = usersDb.find((candidateUser) => candidateUser.email.toLowerCase() === email.toLowerCase());
 
                 if (!foundUser) {
@@ -295,18 +295,18 @@ export const AuthProvider = ({ children }) => {
                     localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
                 } else {
                     let needsSync = false;
-                    
+
                     if (backendUserId && String(foundUser.id) !== String(backendUserId)) {
                         foundUser.id = String(backendUserId);
                         needsSync = true;
                     }
-                    
+
                     const nameFromBackend = extractBackendName(data);
                     if (nameFromBackend && (!foundUser.name || foundUser.name === email.split('@')[0])) {
                         foundUser.name = nameFromBackend;
                         needsSync = true;
                     }
-                    
+
                     if (needsSync) {
                         const updatedUsersDb = usersDb.map((candidateUser) =>
                             candidateUser.email.toLowerCase() === email.toLowerCase() ? foundUser : candidateUser
@@ -315,12 +315,12 @@ export const AuthProvider = ({ children }) => {
                         localStorage.setItem(USERS_DB_STORAGE_KEY, JSON.stringify(updatedUsersDb));
                     }
                 }
-                
+
                 // Store tokens if provided by backend (new secure flow)
                 if (data.accessToken && data.accessTokenExpiresAt) {
                     storeToken(data.accessToken, data.accessTokenExpiresAt);
                 }
-                
+
                 setUser(foundUser);
                 localStorage.setItem('user', JSON.stringify(foundUser));
                 return { success: true, user: foundUser };
@@ -396,10 +396,10 @@ export const AuthProvider = ({ children }) => {
 
         // Get remaining time
         const expiryIn = getTokenExpiryIn();
-        
+
         // Check token expiry every minute (or when close to expiry)
         const checkInterval = Math.min(60000, Math.max(1000, expiryIn - 60000)); // 1 minute before expiry
-        
+
         const timer = setInterval(() => {
             if (isTokenExpired()) {
                 logout();
@@ -421,16 +421,16 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ 
-            user, 
+        <AuthContext.Provider value={{
+            user,
             users,
-            login, 
+            login,
             loginWithCredentials,
             signup,
             verifyOTP,
             getStudentCount,
-            logout, 
-            isAuthenticated: !!user 
+            logout,
+            isAuthenticated: !!user
         }}>
             {children}
         </AuthContext.Provider>
