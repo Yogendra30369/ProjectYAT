@@ -47,6 +47,7 @@ export const getTokenExpiryIn = () => {
 
 export const fetchApi = async (endpoint, options = {}) => {
     try {
+        const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
         const mergedHeaders = {
             ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
@@ -63,6 +64,14 @@ export const fetchApi = async (endpoint, options = {}) => {
             ...options,
             headers: mergedHeaders,
         });
+
+        // Handle 401 Unauthorized - token expired or invalid
+        if (response.status === 401) {
+            clearStoredToken();
+            // Signal to AuthContext to handle logout
+            window.dispatchEvent(new CustomEvent('session-expired'));
+            throw new Error('Session expired. Please login again.');
+        }
 
         // Handle 401 Unauthorized - token expired or invalid
         if (response.status === 401) {

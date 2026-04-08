@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { fetchApi } from '../utils/api';
+import { fetchApi, storeToken, clearStoredToken, isTokenExpired, getTokenExpiryIn } from '../utils/api';
 
 const AuthContext = createContext();
 const USERS_DB_STORAGE_KEY = 'usersDb';
@@ -169,10 +169,18 @@ export const AuthProvider = ({ children }) => {
             return null;
         }
 
+        // Validate token is not expired
+        if (isTokenExpired()) {
+            localStorage.removeItem('user');
+            clearStoredToken();
+            return null;
+        }
+
         try {
             return JSON.parse(storedUser);
         } catch {
             localStorage.removeItem('user');
+            clearStoredToken();
             return null;
         }
     });
@@ -308,6 +316,11 @@ export const AuthProvider = ({ children }) => {
                     }
                 }
                 
+                // Store tokens if provided by backend (new secure flow)
+                if (data.accessToken && data.accessTokenExpiresAt) {
+                    storeToken(data.accessToken, data.accessTokenExpiresAt);
+                }
+                
                 setUser(foundUser);
                 localStorage.setItem('user', JSON.stringify(foundUser));
                 return { success: true, user: foundUser };
@@ -368,7 +381,44 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         setUser(null);
         localStorage.removeItem('user');
+        clearStoredToken();
     };
+
+    // Session monitoring: Auto-logout when token expires
+    useEffect(() => {
+        if (!user) return;
+
+        // Check if token is already expired
+        if (isTokenExpired()) {
+            logout();
+            return;
+        }
+
+        // Get remaining time
+        const expiryIn = getTokenExpiryIn();
+        
+        // Check token expiry every minute (or when close to expiry)
+        const checkInterval = Math.min(60000, Math.max(1000, expiryIn - 60000)); // 1 minute before expiry
+        
+        const timer = setInterval(() => {
+            if (isTokenExpired()) {
+                logout();
+                clearInterval(timer);
+            }
+        }, checkInterval);
+
+        return () => clearInterval(timer);
+    }, [user]);
+
+    // Handle session-expired event (from fetchApi on 401 response)
+    useEffect(() => {
+        const handleSessionExpired = () => {
+            logout();
+        };
+
+        window.addEventListener('session-expired', handleSessionExpired);
+        return () => window.removeEventListener('session-expired', handleSessionExpired);
+    }, []);
 
     return (
         <AuthContext.Provider value={{ 
