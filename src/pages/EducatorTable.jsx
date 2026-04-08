@@ -72,8 +72,8 @@ export const EducatorTable = () => {
             if (!enrollment) return;
 
             const marks = parseInt(editMarks, 10);
-            if (isNaN(marks) || marks < 0 || marks > 100) {
-                setError('Marks must be between 0 and 100');
+            if (isNaN(marks) || marks < 0 || marks > 25) {
+                setError('Marks must be between 0 and 25');
                 return;
             }
 
@@ -237,14 +237,14 @@ export const EducatorTable = () => {
                                                 <Input
                                                     type="number"
                                                     min="0"
-                                                    max="100"
+                                                    max="25"
                                                     value={editMarks}
                                                     onChange={(e) => setEditMarks(e.target.value)}
                                                     style={{ width: '80px', textAlign: 'center' }}
                                                 />
                                             ) : (
                                                 <span style={{ fontWeight: 600 }}>
-                                                    {enrollment.marks}/100
+                                                    {enrollment.marks}/25
                                                 </span>
                                             )}
                                         </td>

@@ -92,7 +92,7 @@ export const StudentSignup = () => {
                                 id="otp"
                                 name="otp"
                                 type="text"
-                                placeholder="Enter 6-digit OTP"
+                                placeholder="Enter 4-digit OTP"
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value)}
                                 required
