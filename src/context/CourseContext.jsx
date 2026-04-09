@@ -959,6 +959,14 @@ export const CourseProvider = ({ children }) => {
             throw new Error('Please select a file before submitting.');
         }
 
+        const allowedExtensions = ['.pdf', '.doc', '.docx'];
+        const fileName = submissionFile.name.toLowerCase();
+        const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+
+        if (!isValidExtension) {
+            throw new Error('Unsupported file format. Only PDF (.pdf) and Word documents (.doc, .docx) are allowed.');
+        }
+
         const numericUserId = extractNumericId(userId);
         const numericCourseId = extractNumericId(courseId);
 

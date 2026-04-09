@@ -244,7 +244,11 @@ export const CourseDetails = () => {
                         )}
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
                             <div style={{ flex: 1 }}>
-                                <Input type="file" onChange={handleFileChange} />
+                                <Input 
+                                    type="file" 
+                                    onChange={handleFileChange} 
+                                    accept=".pdf,.doc,.docx"
+                                />
                             </div>
                             <Button onClick={handleAssignmentSubmit} disabled={!assignmentFile || isSubmitting}>
                                 <Upload size={18} /> Submit
