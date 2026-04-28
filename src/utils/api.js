@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'https://projectyat-backend-production-0aa7.up.railway.app/api';
+export const API_BASE_URL = 'http://localhost:8080/api';
 
 // Session/Token management
 const SESSION_KEY_PREFIX = 'yat_session_';
