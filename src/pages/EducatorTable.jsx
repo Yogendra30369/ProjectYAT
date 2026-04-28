@@ -37,7 +37,7 @@ export const EducatorTable = () => {
                 try {
                     const response = await fetchApi(`/student-courses/course/${course.id}`);
                     allEnrollments.push(...response);
-                } catch (err) {
+                } catch {
                     console.log(`No students in course ${course.id}`);
                 }
             }

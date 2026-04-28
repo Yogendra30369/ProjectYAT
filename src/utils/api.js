@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'https://projectyat-backend-production-6dec.up.railway.app/api';
+// Use relative `/api` during development so the Vite dev server proxy can forward requests
+// to the backend and avoid CORS issues. In production use the real backend URL.
+export const API_BASE_URL = import.meta.env.DEV
+    ? '/api'
+    : 'https://projectyat-backend-production-6dec.up.railway.app/api';
 
 // Session/Token management
 const SESSION_KEY_PREFIX = 'yat_session_';
@@ -110,7 +114,7 @@ export const fetchApi = async (endpoint, options = {}) => {
     if (typeof body === 'string' && body.trim().startsWith('{')) {
         try {
             config.data = JSON.parse(body);
-        } catch (e) {
+        } catch {
             // Not JSON or parse failed, leave as string
             config.data = body;
         }
@@ -127,14 +131,8 @@ export const fetchApi = async (endpoint, options = {}) => {
         config.headers['Content-Type'] = 'application/json';
     }
 
-    try {
-        const response = await apiClient(config);
-        return response.data;
-    } catch (error) {
-        // If it's an axios error with a response, it was already handled by the interceptor
-        // which threw a new Error with the message.
-        throw error;
-    }
+    const response = await apiClient(config);
+    return response.data;
 };
 
 export default apiClient;
