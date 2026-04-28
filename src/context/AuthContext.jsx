@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { fetchApi, storeToken, clearStoredToken, isTokenExpired, getTokenExpiryIn } from '../utils/api';
 
 const AuthContext = createContext();
@@ -378,11 +378,11 @@ export const AuthProvider = ({ children }) => {
         // Deprecated: role shortcuts removed to avoid hardcoded users.
     };
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setUser(null);
         localStorage.removeItem('user');
         clearStoredToken();
-    };
+    }, []);
 
     // Session monitoring: Auto-logout when token expires
     useEffect(() => {
@@ -390,8 +390,11 @@ export const AuthProvider = ({ children }) => {
 
         // Check if token is already expired
         if (isTokenExpired()) {
-            logout();
-            return;
+            const timeoutId = setTimeout(() => {
+                logout();
+            }, 0);
+
+            return () => clearTimeout(timeoutId);
         }
 
         // Get remaining time
@@ -408,7 +411,7 @@ export const AuthProvider = ({ children }) => {
         }, checkInterval);
 
         return () => clearInterval(timer);
-    }, [user]);
+    }, [user, logout]);
 
     // Handle session-expired event (from fetchApi on 401 response)
     useEffect(() => {
@@ -418,7 +421,7 @@ export const AuthProvider = ({ children }) => {
 
         window.addEventListener('session-expired', handleSessionExpired);
         return () => window.removeEventListener('session-expired', handleSessionExpired);
-    }, []);
+    }, [logout]);
 
     return (
         <AuthContext.Provider value={{

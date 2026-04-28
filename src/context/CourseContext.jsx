@@ -156,7 +156,6 @@ const toPersistableModules = (modules) => {
             };
         }
 
-        const isUpload = module?.videoSource === 'upload';
         const videoUrl = module?.videoUrl;
 
         return {

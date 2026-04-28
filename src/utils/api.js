@@ -46,56 +46,43 @@ export const getTokenExpiryIn = () => {
 };
 
 export const fetchApi = async (endpoint, options = {}) => {
-    try {
-        const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
-        const mergedHeaders = {
-            ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
-            ...(options.headers || {}),
-        };
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const mergedHeaders = {
+        ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
+        ...(options.headers || {}),
+    };
 
-        // Inject authorization token if available
-        const token = getStoredToken();
-        if (token) {
-            mergedHeaders['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers: mergedHeaders,
-        });
-
-        // Handle 401 Unauthorized - token expired or invalid
-        if (response.status === 401) {
-            clearStoredToken();
-            // Signal to AuthContext to handle logout
-            window.dispatchEvent(new CustomEvent('session-expired'));
-            throw new Error('Session expired. Please login again.');
-        }
-
-        // Handle 401 Unauthorized - token expired or invalid
-        if (response.status === 401) {
-            clearStoredToken();
-            // Signal to AuthContext to handle logout
-            window.dispatchEvent(new CustomEvent('session-expired'));
-            throw new Error('Session expired. Please login again.');
-        }
-
-        const isJson = response.headers.get('content-type')?.includes('application/json');
-        
-        let data;
-        if (isJson) {
-            data = await response.json();
-        } else {
-            data = await response.text();
-        }
-
-        if (!response.ok) {
-            throw new Error(data || 'API Request Failed');
-        }
-
-        return data;
-    } catch (error) {
-        throw error;
+    // Inject authorization token if available
+    const token = getStoredToken();
+    if (token) {
+        mergedHeaders['Authorization'] = `Bearer ${token}`;
     }
+
+    const response = await fetch(`${API_BASE_URL}${normalizedEndpoint}`, {
+        ...options,
+        headers: mergedHeaders,
+    });
+
+    if (response.status === 401) {
+        clearStoredToken();
+        // Signal to AuthContext to handle logout
+        window.dispatchEvent(new CustomEvent('session-expired'));
+        throw new Error('Session expired. Please login again.');
+    }
+
+    const isJson = response.headers.get('content-type')?.includes('application/json');
+
+    let data;
+    if (isJson) {
+        data = await response.json();
+    } else {
+        data = await response.text();
+    }
+
+    if (!response.ok) {
+        throw new Error(data || 'API Request Failed');
+    }
+
+    return data;
 };

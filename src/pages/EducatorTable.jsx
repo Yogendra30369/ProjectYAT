@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { useCourses } from '../context/CourseContext';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -10,7 +9,6 @@ import { fetchApi } from '../utils/api';
 
 export const EducatorTable = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
     const { courses } = useCourses();
     
     const [studentCourses, setStudentCourses] = useState([]);
@@ -22,12 +20,7 @@ export const EducatorTable = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState('');
 
-    // Fetch all courses with students and their marks
-    useEffect(() => {
-        fetchStudentCourses();
-    }, []);
-
-    const fetchStudentCourses = async () => {
+    const fetchStudentCourses = useCallback(async () => {
         try {
             setLoading(true);
             setError('');
@@ -44,7 +37,7 @@ export const EducatorTable = () => {
                 try {
                     const response = await fetchApi(`/student-courses/course/${course.id}`);
                     allEnrollments.push(...response);
-                } catch (err) {
+                } catch {
                     console.log(`No students in course ${course.id}`);
                 }
             }
@@ -56,7 +49,12 @@ export const EducatorTable = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [courses]);
+
+    // Fetch all courses with students and their marks
+    useEffect(() => {
+        fetchStudentCourses();
+    }, [fetchStudentCourses]);
 
     const handleEditClick = (enrollment) => {
         setEditingId(enrollment.id);
@@ -98,9 +96,9 @@ export const EducatorTable = () => {
             setEditMarks('');
             setEditFeedback('');
             setError('');
-        } catch (err) {
+        } catch (error) {
             setError('Failed to update marks');
-            console.error(err);
+            console.error(error);
         }
     };
 
