@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'https://projectyat-backend-production-6dec.up.railway.app/api';
+// Use relative `/api` during development so the Vite dev server proxy can forward requests
+// to the backend and avoid CORS issues. In production use the real backend URL.
+export const API_BASE_URL = import.meta.env.DEV
+    ? '/api'
+    : 'https://projectyat-backend-production-6dec.up.railway.app/api';
 
 // Session/Token management
 const SESSION_KEY_PREFIX = 'yat_session_';
