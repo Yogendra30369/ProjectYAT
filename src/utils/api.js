@@ -64,21 +64,29 @@ export const fetchApi = async (endpoint, options = {}) => {
         headers: mergedHeaders,
     });
 
-    if (response.status === 401) {
-        return data;
+    const isJson = response.headers.get('content-type')?.includes('application/json');
+    let data = null;
 
-        const isJson = response.headers.get('content-type')?.includes('application/json');
-        
-        let data;
+    if (response.status !== 204) {
         if (isJson) {
-            data = await response.json();
+            try {
+                data = await response.json();
+            } catch {
+                data = null;
+            }
         } else {
             data = await response.text();
         }
+    }
 
-        if (!response.ok) {
-            throw new Error(data || 'API Request Failed');
-        }
+    if (response.status === 401) {
+        clearStoredToken();
+        throw new Error((typeof data === 'string' && data) || data?.message || 'Unauthorized');
+    }
 
-        return data;
+    if (!response.ok) {
+        throw new Error((typeof data === 'string' && data) || data?.message || 'API Request Failed');
+    }
+
+    return data;
 };

@@ -43,7 +43,7 @@ const getPlayableVideoUrl = (module) => {
 
 export const CourseDetails = () => {
     const { courseId } = useParams();
-    const { courses, markModuleCompleted, submitAssignment: submitCourseAssignment, getCompletedModules, getAssignmentScore, isAssignmentGraded, getCourseProgress, hasCompletedCourseComponents, isCoursePassed } = useCourses();
+    const { courses, markModuleCompleted, submitAssignment: submitCourseAssignment, getCompletedModules, getAssignmentScore, isAssignmentGraded, getCourseProgress, canSubmitAssignment: canSubmitCourseAssignment, hasCompletedCourseComponents, isCoursePassed } = useCourses();
     const { user } = useAuth();
     const userId = user?.id;
     const course = courses.find(c => c.id === courseId);
@@ -79,6 +79,7 @@ export const CourseDetails = () => {
     const assignmentScore = userId ? getAssignmentScore(userId, courseId) : null;
     const assignmentGraded = userId ? isAssignmentGraded(userId, courseId) : false;
     const progress = userId ? getCourseProgress(userId, courseId, modules.length) : 0;
+    const canSubmitAssignment = userId ? canSubmitCourseAssignment(userId, courseId, modules.length) : false;
     const allComponentsCompleted = userId ? hasCompletedCourseComponents(userId, courseId, modules.length) : false;
     const hasPassedCourse = userId ? isCoursePassed(userId, courseId, modules.length) : false;
 
@@ -228,6 +229,11 @@ export const CourseDetails = () => {
                         <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <FileText size={20} /> Assignment Submission
                         </h3>
+                        {!canSubmitAssignment && (
+                            <div style={{ marginBottom: '1rem', background: 'var(--warning-50, #fff7ed)', color: 'var(--warning-900, #7c2d12)', borderRadius: 'var(--radius-md)', padding: '0.85rem 1rem' }}>
+                                Complete 100% of the course progress to unlock assignment submission.
+                            </div>
+                        )}
                         {assignmentQuestionFileDataUrl && assignmentQuestionFileName && (
                             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <a 
@@ -250,7 +256,7 @@ export const CourseDetails = () => {
                                     accept=".pdf,.doc,.docx"
                                 />
                             </div>
-                            <Button onClick={handleAssignmentSubmit} disabled={!assignmentFile || isSubmitting}>
+                            <Button onClick={handleAssignmentSubmit} disabled={!assignmentFile || isSubmitting || !canSubmitAssignment}>
                                 <Upload size={18} /> Submit
                             </Button>
                         </div>

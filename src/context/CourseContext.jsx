@@ -965,6 +965,12 @@ export const CourseProvider = ({ children }) => {
             throw new Error('Invalid user or course id for assignment submission.');
         }
 
+        const course = courses.find((entry) => courseIdsMatch(entry.id, courseId));
+        const totalModules = course?.modules?.length || 0;
+        if (!canSubmitAssignment(userId, courseId, totalModules)) {
+            throw new Error('Complete 100% of the course before submitting the assignment.');
+        }
+
         const formData = new FormData();
         formData.append('file', submissionFile);
 
@@ -1068,6 +1074,10 @@ export const CourseProvider = ({ children }) => {
         return Math.min(100, Math.round((completedModules / safeTotalModules) * 100));
     };
 
+    const canSubmitAssignment = (userId, courseId, totalModules) => {
+        return getCourseProgress(userId, courseId, totalModules) >= 100;
+    };
+
     const hasCompletedCourseComponents = (userId, courseId, totalModules) => {
         const safeTotalModules = totalModules || 0;
         const modulesDone = getCompletedModules(userId, courseId).length >= safeTotalModules;
@@ -1149,7 +1159,7 @@ export const CourseProvider = ({ children }) => {
     };
 
     return (
-        <CourseContext.Provider value={{ courses, addCourse, updateCourse, deleteCourse, enroll, unenroll, getEnrolledCourses, getCourseStudents, pruneInvalidEnrollments, markModuleCompleted, markAssignmentSubmitted, submitAssignment, gradeAssignment, getCompletedModules, isAssignmentSubmitted, getAssignmentScore, isAssignmentGraded, getAssignmentDetails, getCourseProgress, hasCompletedCourseComponents, isCoursePassed, getEnrollmentDate, getUpcomingTasks }}>
+        <CourseContext.Provider value={{ courses, addCourse, updateCourse, deleteCourse, enroll, unenroll, getEnrolledCourses, getCourseStudents, pruneInvalidEnrollments, markModuleCompleted, markAssignmentSubmitted, submitAssignment, gradeAssignment, getCompletedModules, isAssignmentSubmitted, getAssignmentScore, isAssignmentGraded, getAssignmentDetails, getCourseProgress, canSubmitAssignment, hasCompletedCourseComponents, isCoursePassed, getEnrollmentDate, getUpcomingTasks }}>
             {children}
         </CourseContext.Provider>
     );
