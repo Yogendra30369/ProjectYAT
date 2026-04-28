@@ -845,7 +845,6 @@ export const CourseProvider = ({ children }) => {
 
                 // If no enrollmentId locally, attempt to delete by user+course directly or skip for mock testing
                 
-                // Update Local state only after successful external call
                 const updatedMap = {
                     ...enrolledMap,
                     [userId]: userEnrollments.filter(id => id !== courseId)
@@ -856,7 +855,6 @@ export const CourseProvider = ({ children }) => {
                 if (userEnrollmentMeta[courseId]) {
                     const updatedUserEnrollmentMeta = { ...userEnrollmentMeta };
                     delete updatedUserEnrollmentMeta[courseId];
-
                     const updatedEnrollmentMetaMap = {
                         ...enrollmentMetaMap,
                         [userId]: updatedUserEnrollmentMeta
@@ -865,7 +863,6 @@ export const CourseProvider = ({ children }) => {
                     setEnrollmentMetaMap(updatedEnrollmentMetaMap);
                     localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
                 }
-
                 const userProgress = progressMap[userId] || {};
                 if (userProgress[courseId]) {
                     const updatedUserProgress = { ...userProgress };
