@@ -679,10 +679,13 @@ export const CourseProvider = ({ children }) => {
                 }
             }
 
+            const existingCourse = courses.find(c => c.id === courseId);
             const payload = {
                 title: updatedCourse.title,
                 modules: JSON.stringify(toPersistableModules(processedModules)),
-                registeredStudents: updatedCourse.registeredStudents || 0,
+                registeredStudents: typeof updatedCourse.registeredStudents === 'number' 
+                    ? updatedCourse.registeredStudents 
+                    : (existingCourse?.registeredStudents || 0),
                 assignmentFileName: currentAssignmentFileName,
                 assignmentFileType: updatedCourse.assignmentFileType || ''
             };
@@ -778,24 +781,20 @@ export const CourseProvider = ({ children }) => {
                 setEnrollmentMetaMap(updatedEnrollmentMetaMap);
                 localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
 
-                const updatedCourse = await fetchApi(`/courses/${numericCourseId}/student-count?delta=1`, {
-                    method: 'PATCH'
-                });
-
-                setCourses((prevCourses) => {
-                    const nextCourses = prevCourses.map((course) =>
-                        course.id === String(updatedCourse.id) || course.id === courseId
-                            ? normalizeCourse({
-                                ...course,
-                                ...updatedCourse,
-                                id: String(course.id), // preserve original id reference
-                                modules: updatedCourse.modules ? JSON.parse(updatedCourse.modules) : (course.modules || [])
-                            })
-                            : course
-                    );
-                    localStorage.setItem('courses', JSON.stringify(nextCourses));
-                    return nextCourses;
-                });
+                // Fetch all courses to get the updated student count from backend
+                const apiCourses = await fetchApi('/courses/all');
+                if (Array.isArray(apiCourses)) {
+                    const normalized = apiCourses.map(c => {
+                        const modules = parseModulesFromApi(c.modules);
+                        return normalizeCourse({
+                            ...c,
+                            id: String(c.id),
+                            modules
+                        });
+                    });
+                    setCourses(normalized);
+                    localStorage.setItem('courses', JSON.stringify(normalized));
+                }
             } catch (error) {
                 console.error('Failed to save enrollment to database:', error);
                 
@@ -847,31 +846,27 @@ export const CourseProvider = ({ children }) => {
 
                 // If no enrollmentId locally, attempt to delete by user+course directly or skip for mock testing
                 
-                const updatedCourse = await fetchApi(`/courses/${numericCourseId}/student-count?delta=-1`, {
-                    method: 'PATCH'
-                });
-
-                // Update Local state only after successful external fetch
+                // Update Local state only after successful external call
                 const updatedMap = {
                     ...enrolledMap,
                     [userId]: userEnrollments.filter(id => id !== courseId)
                 };
                 setEnrolledMap(updatedMap);
                 localStorage.setItem('enrollments', JSON.stringify(updatedMap));
-    
+
                 if (userEnrollmentMeta[courseId]) {
                     const updatedUserEnrollmentMeta = { ...userEnrollmentMeta };
                     delete updatedUserEnrollmentMeta[courseId];
-    
+
                     const updatedEnrollmentMetaMap = {
                         ...enrollmentMetaMap,
                         [userId]: updatedUserEnrollmentMeta
                     };
-    
+
                     setEnrollmentMetaMap(updatedEnrollmentMetaMap);
                     localStorage.setItem('enrollmentMeta', JSON.stringify(updatedEnrollmentMetaMap));
                 }
-    
+
                 const userProgress = progressMap[userId] || {};
                 if (userProgress[courseId]) {
                     const updatedUserProgress = { ...userProgress };
@@ -884,20 +879,20 @@ export const CourseProvider = ({ children }) => {
                     localStorage.setItem('courseProgress', JSON.stringify(updatedProgressMap));
                 }
 
-                setCourses((prevCourses) => {
-                    const nextCourses = prevCourses.map((course) =>
-                        course.id === String(updatedCourse.id) || course.id === courseId
-                            ? normalizeCourse({
-                                ...course,
-                                ...updatedCourse,
-                                id: String(course.id),
-                                modules: updatedCourse.modules ? JSON.parse(updatedCourse.modules) : (course.modules || [])
-                            })
-                            : course
-                    );
-                    localStorage.setItem('courses', JSON.stringify(nextCourses));
-                    return nextCourses;
-                });
+                // Fetch all courses to get updated counts
+                const apiCourses = await fetchApi('/courses/all');
+                if (Array.isArray(apiCourses)) {
+                    const normalized = apiCourses.map(c => {
+                        const modules = parseModulesFromApi(c.modules);
+                        return normalizeCourse({
+                            ...c,
+                            id: String(c.id),
+                            modules
+                        });
+                    });
+                    setCourses(normalized);
+                    localStorage.setItem('courses', JSON.stringify(normalized));
+                }
 
             } catch (error) {
                 console.error('Failed to unenroll from database:', error);
