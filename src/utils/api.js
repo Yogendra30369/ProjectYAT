@@ -1,4 +1,6 @@
-export const API_BASE_URL = 'http://localhost:8080/api';
+import axios from 'axios';
+
+export const API_BASE_URL = 'https://projectyat-backend-production-6dec.up.railway.app/api';
 
 // Session/Token management
 const SESSION_KEY_PREFIX = 'yat_session_';
@@ -45,48 +47,96 @@ export const getTokenExpiryIn = () => {
     return Math.max(0, expiryMs - Date.now());
 };
 
+// Create axios instance
+const apiClient = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+// Request interceptor for injecting token
+apiClient.interceptors.request.use(
+    (config) => {
+        const token = getStoredToken();
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Response interceptor for handling errors (like 401)
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            clearStoredToken();
+            window.dispatchEvent(new CustomEvent('session-expired'));
+        }
+        
+        // Extract error message
+        const message = error.response?.data?.message || 
+                        error.response?.data || 
+                        error.message || 
+                        'API Request Failed';
+        
+        return Promise.reject(new Error(typeof message === 'string' ? message : JSON.stringify(message)));
+    }
+);
+
+/**
+ * Wrapper function to maintain backward compatibility with existing fetchApi calls
+ */
 export const fetchApi = async (endpoint, options = {}) => {
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
-    const mergedHeaders = {
-        ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
-        ...(options.headers || {}),
+    const { method = 'GET', body, headers = {} } = options;
+    
+    // Check if body is FormData
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    
+    // Create a local config for this request
+    const config = {
+        url: endpoint,
+        method: method.toUpperCase(),
+        data: body,
+        headers: { ...headers }
     };
 
-    // Inject authorization token if available
-    const token = getStoredToken();
-    if (token) {
-        mergedHeaders['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${API_BASE_URL}${normalizedEndpoint}`, {
-        ...options,
-        headers: mergedHeaders,
-    });
-
-    const isJson = response.headers.get('content-type')?.includes('application/json');
-    let data = null;
-
-    if (response.status !== 204) {
-        if (isJson) {
-            try {
-                data = await response.json();
-            } catch {
-                data = null;
-            }
-        } else {
-            data = await response.text();
+    // If body is a string, try to parse it if it looks like JSON
+    // This is because the legacy code often manually calls JSON.stringify(body)
+    if (typeof body === 'string' && body.trim().startsWith('{')) {
+        try {
+            config.data = JSON.parse(body);
+        } catch (e) {
+            // Not JSON or parse failed, leave as string
+            config.data = body;
         }
     }
 
-    if (response.status === 401) {
-        clearStoredToken();
-        throw new Error((typeof data === 'string' && data) || data?.message || 'Unauthorized');
+    // Axios handles FormData automatically and sets the correct boundary.
+    // If it's NOT FormData and Content-Type isn't set, default to application/json for POST/PUT/PATCH
+    const needsJsonHeader = !isFormData && 
+                             ['POST', 'PUT', 'PATCH'].includes(config.method) && 
+                             !config.headers['Content-Type'] && 
+                             !config.headers['content-type'];
+    
+    if (needsJsonHeader) {
+        config.headers['Content-Type'] = 'application/json';
     }
 
-    if (!response.ok) {
-        throw new Error((typeof data === 'string' && data) || data?.message || 'API Request Failed');
+    try {
+        const response = await apiClient(config);
+        return response.data;
+    } catch (error) {
+        // If it's an axios error with a response, it was already handled by the interceptor
+        // which threw a new Error with the message.
+        throw error;
     }
-
-    return data;
 };
+
+export default apiClient;
+
+
