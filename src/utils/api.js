@@ -65,24 +65,20 @@ export const fetchApi = async (endpoint, options = {}) => {
     });
 
     if (response.status === 401) {
-        clearStoredToken();
-        // Signal to AuthContext to handle logout
-        window.dispatchEvent(new CustomEvent('session-expired'));
-        throw new Error('Session expired. Please login again.');
-    }
+        return data;
 
-    const isJson = response.headers.get('content-type')?.includes('application/json');
+        const isJson = response.headers.get('content-type')?.includes('application/json');
+        
+        let data;
+        if (isJson) {
+            data = await response.json();
+        } else {
+            data = await response.text();
+        }
 
-    let data;
-    if (isJson) {
-        data = await response.json();
-    } else {
-        data = await response.text();
-    }
+        if (!response.ok) {
+            throw new Error(data || 'API Request Failed');
+        }
 
-    if (!response.ok) {
-        throw new Error(data || 'API Request Failed');
-    }
-
-    return data;
+        return data;
 };

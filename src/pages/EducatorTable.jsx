@@ -37,7 +37,7 @@ export const EducatorTable = () => {
                 try {
                     const response = await fetchApi(`/student-courses/course/${course.id}`);
                     allEnrollments.push(...response);
-                } catch {
+                } catch (err) {
                     console.log(`No students in course ${course.id}`);
                 }
             }
@@ -96,9 +96,9 @@ export const EducatorTable = () => {
             setEditMarks('');
             setEditFeedback('');
             setError('');
-        } catch (error) {
+        } catch (err) {
             setError('Failed to update marks');
-            console.error(error);
+            console.error(err);
         }
     };
 
