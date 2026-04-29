@@ -31,7 +31,7 @@ const getPlayableVideoUrl = (module) => {
     if (getModuleVideoMode(module) === 'upload') {
         // If it's a relative path from the backend (e.g. /api/videos/stream/...)
         if (typeof videoUrl === 'string' && videoUrl.startsWith('/api/videos/stream/')) {
-            // Prepend the base URL (http://localhost:8080)
+            // Prepend the base URL (derived from API_BASE_URL)
             const baseUrl = API_BASE_URL.replace('/api', '');
             return `${baseUrl}${videoUrl}`;
         }
@@ -67,7 +67,7 @@ export const CourseDetails = () => {
         }
 
         // Construct backend download URL: /api/assignments/download/{courseId}/{fileName}
-        const baseUrl = API_BASE_URL; // http://localhost:8080/api
+        const baseUrl = API_BASE_URL; 
         return `${baseUrl}/assignments/download/${courseId}/${assignmentQuestionFileName}`;
     };
 

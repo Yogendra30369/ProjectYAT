@@ -4,7 +4,7 @@ import axios from 'axios';
 // to the backend and avoid CORS issues. In production use the real backend URL.
 export const API_BASE_URL = import.meta.env.DEV
     ? '/api'
-    : 'https://projectyat-backend-production-6dec.up.railway.app/api';
+    : 'https://projectyat-backend-production-6dec.up.railway.app/api/';
 
 // Session/Token management
 const SESSION_KEY_PREFIX = 'yat_session_';
@@ -101,9 +101,13 @@ export const fetchApi = async (endpoint, options = {}) => {
     // Check if body is FormData
     const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     
+    // Strip leading slash if present to ensure the endpoint is treated as relative to API_BASE_URL.
+    // Axios treats URLs starting with / as absolute paths, which would bypass the /api prefix.
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+
     // Create a local config for this request
     const config = {
-        url: endpoint,
+        url: cleanEndpoint,
         method: method.toUpperCase(),
         data: body,
         headers: { ...headers }
