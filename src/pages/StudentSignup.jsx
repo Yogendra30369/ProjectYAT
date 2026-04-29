@@ -86,9 +86,24 @@ export const StudentSignup = () => {
                         <h1 className={styles.title}>Verify Email</h1>
                         <p className={styles.subtitle}>Enter the OTP sent to {formData.email}</p>
                         {serverOtp && (
-                            <p className={styles.subtitle} style={{ marginTop: '0.5rem', color: 'var(--warning-700)' }}>
-                                SMTP delivery failed on Railway, so use this OTP from the server response: {serverOtp}
-                            </p>
+                            <div style={{ 
+                                marginTop: '1rem',
+                                padding: '0.875rem', 
+                                background: 'var(--primary-50)', 
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--primary-100)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem'
+                            }}>
+                                <CheckCircle size={18} color="var(--primary-600)" />
+                                <div style={{ textAlign: 'left' }}>
+                                    <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--primary-900)', margin: 0 }}>Demo Mode Access</p>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--primary-700)', margin: '2px 0 0 0' }}>
+                                        Verification code: <strong style={{ fontSize: '1rem', letterSpacing: '2px' }}>{serverOtp}</strong>
+                                    </p>
+                                </div>
+                            </div>
                         )}
                     </div>
 
