@@ -341,11 +341,27 @@ export const AuthProvider = ({ children }) => {
                 body: JSON.stringify({ name, email, password })
             });
 
-            if (data.includes('OTP sent')) {
-                return { success: true, message: data };
-            } else {
+            if (typeof data === 'string') {
+                if (data.toLowerCase().includes('otp sent') || data.toLowerCase().includes('account created')) {
+                    return { success: true, message: data };
+                }
+
                 return { success: false, error: data };
             }
+
+            if (data && typeof data === 'object') {
+                if (data.success === true) {
+                    return {
+                        success: true,
+                        message: data.message || 'Account created',
+                        otp: data.otp || ''
+                    };
+                }
+
+                return { success: false, error: data.message || 'Unable to register' };
+            }
+
+            return { success: false, error: 'Unable to register' };
         } catch (error) {
             console.error("Signup API Error:", error);
             return { success: false, error: 'Unable to register. Please ensure backend is available.' };

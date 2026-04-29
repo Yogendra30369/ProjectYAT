@@ -18,6 +18,7 @@ export const StudentSignup = () => {
     });
     const [showOTP, setShowOTP] = useState(false);
     const [otp, setOtp] = useState('');
+    const [serverOtp, setServerOtp] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -48,6 +49,9 @@ export const StudentSignup = () => {
         const result = await signup(formData.name, formData.email, formData.password);
         
         if (result.success) {
+            if (result.otp) {
+                setServerOtp(result.otp);
+            }
             setShowOTP(true);
         } else {
             setError(result.error);
@@ -81,6 +85,11 @@ export const StudentSignup = () => {
                         </div>
                         <h1 className={styles.title}>Verify Email</h1>
                         <p className={styles.subtitle}>Enter the OTP sent to {formData.email}</p>
+                        {serverOtp && (
+                            <p className={styles.subtitle} style={{ marginTop: '0.5rem', color: 'var(--warning-700)' }}>
+                                SMTP delivery failed on Railway, so use this OTP from the server response: {serverOtp}
+                            </p>
+                        )}
                     </div>
 
                     <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
